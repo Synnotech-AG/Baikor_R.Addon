@@ -1,0 +1,292 @@
+# -----------------------------------------------------------------------------
+# Default inventory for the CIVITAS/CORE Baikor_R addon
+# -----------------------------------------------------------------------------
+#
+# CIVITAS/CORE merges this file automatically when the addon is loaded. Operators
+# only need to override values which differ for their environment; this is not a
+# form where every value must be copied into the customer inventory.
+#
+# Labels used below:
+#   REQUIRED  The operator must provide or verify this value for production.
+#   OPTIONAL  Keep the default unless the described feature is needed.
+#   DEV ONLY  Never enable this in a customer production environment.
+#
+# Credential values default to empty strings. Supply them through the operator's
+# protected inventory/Ansible Vault, the existing Core GitLab access settings or
+# the documented deployment environment variables.
+# -----------------------------------------------------------------------------
+
+---
+all:
+  children:
+    controller:
+      vars:
+        inv_addons:
+          baikor_r:
+            # Master switch. Tasks are skipped when false. The addon tasks file
+            # must still be listed under inv_addons.addons for this value to load.
+            enable: true
+
+            # Create a conventional Kubernetes Ingress and its TLS certificate.
+            # Recommended default when CIVITAS/CORE uses an ingress controller.
+            enable_ingress: true
+
+            # OPTIONAL: Create a dedicated Gateway plus HTTPRoute resources.
+            # Set enable_ingress to false when Gateway API should replace Ingress.
+            # Both may be true only when the operator deliberately wants both.
+            enable_gateway: false
+
+            # Create the application namespace. Set false only when the operator
+            # creates and manages this namespace before running the addon.
+            ns_create: true
+
+            # Kubernetes namespace for the application workload and its Secrets.
+            # ENVIRONMENT is the existing CIVITAS/CORE environment name (for
+            # example tst, staging or production).
+            ns_name: "{{ ENVIRONMENT }}-baikor-r-stack"
+
+            # Kubeconfig filename resolved below CIVITAS/CORE's
+            # K8S_KUBECONFIG_PATH. Usually leave this platform default unchanged.
+            ns_kubeconfig: "{{ kubeconfig_file }}"
+
+            # DNS label placed before the platform ingress domain. With domain
+            # example.org this produces https://baikor-r.example.org.
+            subdomain: "baikor-r"
+
+            authentication:
+              # DEV ONLY: Let the application accept an untrusted/invalid
+              # Keycloak TLS certificate. Production must keep this false.
+              allow_invalid_server_certificate: false
+
+              # DEV ONLY: Automatically assign all Baikor_R client roles to the
+              # CIVITAS/CORE platform admin. In production, assign roles explicitly.
+              assign_platform_admin_roles: false
+
+            # Credentials for the private GitLab Helm package and application
+            # container registry. Empty values use the deployment environment and
+            # then fall back to inv_k8s.gitlab_access. The token needs
+            # read_package_registry and read_registry permissions.
+            package_registry:
+              # GitLab deploy-token username.
+              username: ""
+
+              # GitLab deploy token. Use protected configuration, not plain Git.
+              password: ""
+
+            # OPTIONAL: Override where the Baikor_R application image is pulled
+            # from. This does not change the Helm chart repository.
+            image_registry:
+              # Reuse an enabled CIVITAS/CORE private registry/mirror. Explicit
+              # registry/repository values below take precedence.
+              inherit_core: true
+
+              # Explicit mirror host in host[:port] form, without scheme or path.
+              # Empty means use the inherited Core mirror or pinned GitLab source.
+              registry: ""
+
+              # Repository path inside the explicit mirror. Empty preserves the
+              # pinned application repository path.
+              repository: ""
+
+              # Credentials for an explicit mirror. They are not copied from the
+              # GitLab package credentials. Use protected operator configuration.
+              username: ""
+              password: ""
+
+              # Instead of username/password, reference an operator-owned
+              # kubernetes.io/dockerconfigjson Secret in the application namespace.
+              existing_pull_secret: ""
+
+              # Name used when the addon creates the explicit-mirror pull Secret.
+              image_pull_secret_name: baikor-r-image-registry
+
+            # OPTIONAL: Separate registry settings for the PostgreSQL client image
+            # used by database bootstrap jobs. This is useful for air-gapped sites.
+            bootstrap_image_registry:
+              # Reuse the enabled CIVITAS/CORE private registry/mirror.
+              inherit_core: true
+
+              # Explicit bootstrap-image mirror host in host[:port] form.
+              registry: ""
+
+              # Repository path in that mirror; empty preserves the pinned path.
+              repository: ""
+
+              # Credentials for the explicit bootstrap mirror. Prefer an existing
+              # operator Secret or a protected inventory mechanism when required.
+              username: ""
+              password: ""
+
+              # Operator-owned pull Secret in database.namespace. The addon reads
+              # but never overwrites it.
+              existing_pull_secret: ""
+
+              # Name used when the addon creates the bootstrap pull Secret.
+              image_pull_secret_name: baikor-r-bootstrap-registry
+
+            service_portal:
+              # Add the Baustellenmanagement card to the CIVITAS/CORE overview
+              # when the platform service portal itself is enabled.
+              enable_card: true
+
+            imports:
+              service_account:
+                # OPTIONAL: Create a confidential Keycloak machine client for the
+                # import API. Human users do not need this. Credentials are stored
+                # in Secret baikor-r-import-client in the application namespace.
+                enable: false
+
+                # Keycloak client ID for the generated machine client. Change only
+                # to avoid an existing client-name collision in the tenant realm.
+                client_id: baikor-r-import
+
+            publication:
+              # OPTIONAL: Publish sanitized Approved/Active construction sites to
+              # GeoServer. Enable only after public fields and access are approved.
+              enable: false
+
+              masterportal:
+                # OPTIONAL: Export the Node.js merge tool which adds the layer and
+                # title search to operator-owned Masterportal configuration files.
+                # Requires publication.enable and the Core portal backend.
+                enable: false
+
+                # REQUIRED when masterportal.enable is true: absolute directory on
+                # the Ansible controller. Only the merge tool is exported; the
+                # addon does not change the shared portal automatically.
+                export_directory: ""
+
+              # Existing GeoServer workspace approved for public data. The default
+              # follows CIVITAS/CORE's configured open-data dataspace.
+              workspace: "{{ inv_access.open_data_dataspace | default('ds_open_data') }}"
+
+              # GeoServer datastore owned by this addon. Reserve this name and do
+              # not point it at an unrelated existing datastore.
+              datastore: baikor-r
+
+              # GeoServer feature type containing public area geometries for WMS,
+              # WFS and map selection. Normally leave unchanged.
+              feature_type: public_construction_site_areas
+
+              # GeoServer feature type containing one public record per site; used
+              # by Masterportal title search. Normally leave unchanged.
+              search_feature_type: public_construction_sites
+
+              # Unique Masterportal service/layer identifier generated by the
+              # merge tool. Change only to resolve an operator-approved collision.
+              layer_id: baikor-r-construction-sites
+
+              # Human-readable layer title shown in GeoServer/Masterportal.
+              layer_title: Baustellen
+
+              # GeoServer SLD style managed by this addon for construction areas.
+              # Reserve this name for Baikor_R.
+              style_name: baikor-r-construction-sites
+
+            helm:
+              # DEV ONLY: Absolute/local path to a Baikor_R Helm chart on the
+              # Ansible controller. Empty installs the pinned GitLab chart.
+              local_chart_path: ""
+
+            # OPTIONAL: Values recursively merged into the generated Helm values.
+            # Use only documented chart values; arbitrary overrides can bypass
+            # assumptions validated by the addon.
+            helm_values: {}
+
+            database:
+              # REQUIRED: Namespace containing the PostgreSQL server and all
+              # database credential/CA Secrets. It may differ from the app namespace.
+              namespace: "{{ ENVIRONMENT }}-database-stack"
+
+              # REQUIRED: PostgreSQL DNS name reachable from Kubernetes workloads.
+              # It must match the server certificate when VerifyFull is used.
+              host: ""
+
+              # PostgreSQL TCP port.
+              port: 5432
+
+              # Database created/used exclusively by Baikor_R.
+              name: baikor_r
+
+              # Names of credential Secrets in database.namespace. Each contains
+              # username and password; these values are Secret names, not passwords.
+              application_secret: baikor-writer # Runtime read/write login.
+              migration_secret: baikor-owner # Schema owner used by migration jobs.
+              publication_secret: baikor-publisher # Restricted GeoServer reader; needed only for publication.
+
+              # Npgsql/PostgreSQL TLS mode. VerifyFull validates both CA and host.
+              # Production must keep VerifyFull.
+              ssl_mode: VerifyFull
+
+              # DEV ONLY: Disable certificate-chain/hostname validation when true.
+              # Production must keep false.
+              trust_server_certificate: false
+
+              # Name of a Secret in database.namespace containing key ca.crt.
+              # Leave empty only when the database CA is already system-trusted.
+              ca_secret: ""
+
+              bootstrap:
+                # Let the addon create/reconcile the database, PostGIS extension,
+                # roles and grants. Set false only when the operator provisions all
+                # objects and required permissions before the addon runs.
+                enable: true
+
+                # REQUIRED when bootstrap.enable is true: Secret in
+                # database.namespace with username/password for a database admin.
+                # This credential is used by the deployment job only and is never
+                # passed to the application.
+                admin_secret: ""
+
+                # OPTIONAL: Generate application_secret and migration_secret once
+                # when they are missing. Existing Secrets/passwords are preserved.
+                generate_credentials: false
+
+                # PostgreSQL role names used only when generating missing Secrets.
+                # Choose unused names for a new customer installation.
+                application_username: baikor_r_writer
+                migration_username: baikor_r_owner
+
+                # Existing database to which the admin connects before creating
+                # the Baikor_R database. PostgreSQL installations normally use postgres.
+                maintenance_database: postgres
+
+                # PostgreSQL role name generated for GeoServer when publication is
+                # enabled and publication_secret does not exist.
+                publication_username: baikor_r_publisher
+
+              # DEV ONLY: Provision a PostgreSQL cluster through the Zalando
+              # Postgres Operator. Production customers provide their own server.
+              local_provision:
+                enable: false
+
+                # Kubernetes Postgresql resource/service name.
+                cluster_name: baikor-r-db
+
+                # Zalando operator teamId used in the generated resource.
+                team_id: baikor-r
+
+                # PostgreSQL major version supported by the local test setup.
+                postgres_version: "15"
+
+                # Number of local database instances. This development feature
+                # does not establish a customer backup or HA policy.
+                instances: 1
+
+                # Persistent volume requested for the local database.
+                storage_size: 5Gi
+
+                # Kubernetes StorageClass for the local database volume.
+                storage_class: "{{ inv_k8s.storage_class.loc }}"
+
+                # cert-manager Secret generated for the local PostgreSQL TLS cert.
+                tls_secret: baikor-r-db-tls
+
+                # CPU and memory requests/limits for the local database pods.
+                resources:
+                  requests:
+                    cpu: 50m
+                    memory: 256Mi
+                  limits:
+                    cpu: 500m
+                    memory: 1Gi

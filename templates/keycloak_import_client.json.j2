@@ -1,0 +1,41 @@
+{
+  "clientId": {{ inv_addons.baikor_r.imports.service_account.client_id | to_json }},
+  "name": "Baikor_R import API",
+  "description": "Dedicated machine client for operator-managed API integrations.",
+  "enabled": true,
+  "clientAuthenticatorType": "client-secret",
+  "standardFlowEnabled": false,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": true,
+  "publicClient": false,
+  "protocol": "openid-connect",
+  "fullScopeAllowed": false,
+  "protocolMappers": [
+    {
+      "name": "Baikor client roles",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-client-role-mapper",
+      "consentRequired": false,
+      "config": {
+        "multivalued": "true",
+        "id.token.claim": "false",
+        "access.token.claim": "true",
+        "claim.name": "roles",
+        "usermodel.clientRoleMapping.clientId": "baikor-r"
+      }
+    },
+    {
+      "name": "Baikor API audience",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "consentRequired": false,
+      "config": {
+        "included.client.audience": "baikor-r",
+        "id.token.claim": "false",
+        "access.token.claim": "true"
+      }
+    }
+  ],
+  "defaultClientScopes": ["profile", "roles"]
+}

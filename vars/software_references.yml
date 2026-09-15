@@ -1,0 +1,30 @@
+# -----------------------------------------------------------------------------
+# Software dependencies of the Baikor_R addon
+# -----------------------------------------------------------------------------
+#
+# Image dependencies must appear as
+# - software.addon_baikor_r.some_component_name.registry
+# - software.addon_baikor_r.some_component_name.repository
+# - software.addon_baikor_r.some_component_name.tag
+#
+# to support private registries, which is a platform core feature.
+#
+# For more details, see https://docs.core.civitasconnect.digital/docs/Deployment/Private-Registry-Support
+# -----------------------------------------------------------------------------
+
+---
+software:
+  addon_baikor_r:
+    postgres_client:
+      registry: docker.io
+      repository: library/postgres
+      tag: "15.18-bookworm"
+    baikor_r:
+      helm_chart_name: baikor-r
+      helm_release_name: baikor-r
+      helm_repo_name: baikor-r
+      helm_repo_url: https://gitlab.synnotech.de/api/v4/projects/240/packages/helm/stable
+      helm_chart_version: 1.7.4
+      registry: gitlab-registry.synnotech.de
+      repository: cluster/baikor_r/app
+      tag: 1.7.4

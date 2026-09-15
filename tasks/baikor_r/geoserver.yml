@@ -1,0 +1,249 @@
+---
+- name: "Baikor_R GeoServer: Read installed administrator credentials"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_gd.ns_name }}"
+    kind: Secret
+    name: geoserver-geoserver
+  register: baikor_geoserver_credentials
+  no_log: true
+
+- name: "Baikor_R GeoServer: Define REST endpoints"
+  ansible.builtin.set_fact:
+    baikor_geoserver_rest_url: "https://geoportal.{{ inv_gd.domain }}/geoserver/rest"
+    baikor_geoserver_workspace_url: >-
+      https://geoportal.{{ inv_gd.domain }}/geoserver/rest/workspaces/{{ inv_addons.baikor_r.publication.workspace }}
+
+- name: "Baikor_R GeoServer: Define datastore REST endpoint"
+  ansible.builtin.set_fact:
+    baikor_geoserver_datastore_url: >-
+      {{ baikor_geoserver_workspace_url }}/datastores/{{ inv_addons.baikor_r.publication.datastore }}
+    baikor_geoserver_layer_url: >-
+      {{ baikor_geoserver_rest_url }}/layers/{{ inv_addons.baikor_r.publication.workspace }}:{{
+      inv_addons.baikor_r.publication.feature_type }}.json
+
+- name: "Baikor_R GeoServer: Read operator-owned namespace"
+  ansible.builtin.uri:
+    method: GET
+    url: "{{ baikor_geoserver_rest_url }}/namespaces/{{ inv_addons.baikor_r.publication.workspace }}.json"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    headers:
+      Authorization: >-
+        Basic {{ ((baikor_geoserver_credentials.resources[0].data['geoserver-user'] | b64decode)
+        ~ ':' ~ (baikor_geoserver_credentials.resources[0].data['geoserver-password'] | b64decode)) | b64encode }}
+    status_code: 200
+  register: baikor_geoserver_namespace
+  no_log: true
+
+- name: "Baikor_R GeoServer: Create PostGIS datastore"
+  ansible.builtin.uri:
+    method: GET
+    url: "{{ baikor_geoserver_datastore_url }}.json"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    headers:
+      Accept: application/json
+      Authorization: >-
+        Basic {{ ((baikor_geoserver_credentials.resources[0].data['geoserver-user'] | b64decode)
+        ~ ':' ~ (baikor_geoserver_credentials.resources[0].data['geoserver-password'] | b64decode)) | b64encode }}
+    status_code: [200, 404]
+  register: baikor_geoserver_datastore
+  no_log: true
+
+- name: "Baikor_R GeoServer: Create PostGIS datastore when absent"
+  ansible.builtin.uri:
+    method: POST
+    url: "{{ baikor_geoserver_workspace_url }}/datastores.json"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body:
+      dataStore:
+        name: "{{ inv_addons.baikor_r.publication.datastore }}"
+        connectionParameters:
+          entry:
+            - "@key": host
+              "$": "{{ inv_addons.baikor_r.database.host }}"
+            - "@key": port
+              "$": "{{ inv_addons.baikor_r.database.port | string }}"
+            - "@key": database
+              "$": "{{ inv_addons.baikor_r.database.name }}"
+            - "@key": schema
+              "$": baikor
+            - "@key": user
+              "$": "{{ baikor_database_publication_credentials.resources[0].data.username | b64decode }}"
+            - "@key": passwd
+              "$": "{{ baikor_database_publication_credentials.resources[0].data.password | b64decode }}"
+            - "@key": dbtype
+              "$": postgis
+            - "@key": SSL mode
+              "$": "{{ {'VerifyFull': 'VERIFY_FULL', 'VerifyCA': 'VERIFY_CA', 'Require': 'REQUIRE'}[inv_addons.baikor_r.database.ssl_mode] }}"
+    headers:
+      Accept: application/json
+      Authorization: >-
+        Basic {{ ((baikor_geoserver_credentials.resources[0].data['geoserver-user'] | b64decode)
+        ~ ':' ~ (baikor_geoserver_credentials.resources[0].data['geoserver-password'] | b64decode)) | b64encode }}
+    status_code: 201
+  when: baikor_geoserver_datastore.status == 404
+  no_log: true
+
+- name: "Baikor_R GeoServer: Update existing PostGIS datastore"
+  ansible.builtin.uri:
+    method: PUT
+    url: "{{ baikor_geoserver_datastore_url }}.json"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body:
+      dataStore:
+        name: "{{ inv_addons.baikor_r.publication.datastore }}"
+        connectionParameters:
+          entry:
+            - "@key": host
+              "$": "{{ inv_addons.baikor_r.database.host }}"
+            - "@key": port
+              "$": "{{ inv_addons.baikor_r.database.port | string }}"
+            - "@key": database
+              "$": "{{ inv_addons.baikor_r.database.name }}"
+            - "@key": schema
+              "$": baikor
+            - "@key": user
+              "$": "{{ baikor_database_publication_credentials.resources[0].data.username | b64decode }}"
+            - "@key": passwd
+              "$": "{{ baikor_database_publication_credentials.resources[0].data.password | b64decode }}"
+            - "@key": dbtype
+              "$": postgis
+            - "@key": SSL mode
+              "$": "{{ {'VerifyFull': 'VERIFY_FULL', 'VerifyCA': 'VERIFY_CA', 'Require': 'REQUIRE'}[inv_addons.baikor_r.database.ssl_mode] }}"
+    headers:
+      Accept: application/json
+      Authorization: >-
+        Basic {{ ((baikor_geoserver_credentials.resources[0].data['geoserver-user'] | b64decode)
+        ~ ':' ~ (baikor_geoserver_credentials.resources[0].data['geoserver-password'] | b64decode)) | b64encode }}
+    status_code: 200
+  when: baikor_geoserver_datastore.status == 200
+  no_log: true
+
+- name: "Baikor_R GeoServer: Read construction-site style"
+  ansible.builtin.uri:
+    method: GET
+    url: "{{ baikor_geoserver_workspace_url }}/styles/{{ inv_addons.baikor_r.publication.style_name }}.json"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    headers:
+      Accept: application/json
+      Authorization: >-
+        Basic {{ ((baikor_geoserver_credentials.resources[0].data['geoserver-user'] | b64decode)
+        ~ ':' ~ (baikor_geoserver_credentials.resources[0].data['geoserver-password'] | b64decode)) | b64encode }}
+    status_code: [200, 404]
+  register: baikor_geoserver_style
+  no_log: true
+
+- name: "Baikor_R GeoServer: Create construction-site style when absent"
+  ansible.builtin.uri:
+    method: POST
+    url: >-
+      {{ baikor_geoserver_workspace_url }}/styles?name={{ inv_addons.baikor_r.publication.style_name | urlencode }}
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body: "{{ lookup('template', addon_dir + 'templates/construction_sites.sld.j2') }}"
+    headers:
+      Accept: application/json
+      Content-Type: application/vnd.ogc.sld+xml
+      Authorization: >-
+        Basic {{ ((baikor_geoserver_credentials.resources[0].data['geoserver-user'] | b64decode)
+        ~ ':' ~ (baikor_geoserver_credentials.resources[0].data['geoserver-password'] | b64decode)) | b64encode }}
+    status_code: 201
+  when: baikor_geoserver_style.status == 404
+  no_log: true
+
+- name: "Baikor_R GeoServer: Update existing construction-site style"
+  ansible.builtin.uri:
+    method: PUT
+    url: "{{ baikor_geoserver_workspace_url }}/styles/{{ inv_addons.baikor_r.publication.style_name }}"
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body: "{{ lookup('template', addon_dir + 'templates/construction_sites.sld.j2') }}"
+    headers:
+      Accept: application/json
+      Content-Type: application/vnd.ogc.sld+xml
+      Authorization: >-
+        Basic {{ ((baikor_geoserver_credentials.resources[0].data['geoserver-user'] | b64decode)
+        ~ ':' ~ (baikor_geoserver_credentials.resources[0].data['geoserver-password'] | b64decode)) | b64encode }}
+    status_code: 200
+  when: baikor_geoserver_style.status == 200
+  no_log: true
+
+- name: "Baikor_R GeoServer: Read sanitized feature types"
+  ansible.builtin.uri:
+    method: GET
+    url: "{{ baikor_geoserver_datastore_url }}/featuretypes/{{ feature_type.name }}.json"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    headers:
+      Accept: application/json
+      Authorization: >-
+        Basic {{ ((baikor_geoserver_credentials.resources[0].data['geoserver-user'] | b64decode)
+        ~ ':' ~ (baikor_geoserver_credentials.resources[0].data['geoserver-password'] | b64decode)) | b64encode }}
+    status_code: [200, 404]
+  loop:
+    - name: "{{ inv_addons.baikor_r.publication.feature_type }}"
+      title: "{{ inv_addons.baikor_r.publication.layer_title }}"
+      abstract: Public construction-site areas
+    - name: "{{ inv_addons.baikor_r.publication.search_feature_type }}"
+      title: Baustellensuche
+      abstract: Public construction sites aggregated for title search
+  loop_control:
+    loop_var: feature_type
+    label: "{{ feature_type.name }}"
+  register: baikor_geoserver_feature_types
+  no_log: true
+
+- name: "Baikor_R GeoServer: Publish sanitized feature types when absent"
+  ansible.builtin.uri:
+    method: POST
+    url: "{{ baikor_geoserver_datastore_url }}/featuretypes.json"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body:
+      featureType:
+        name: "{{ feature_type_result.feature_type.name }}"
+        nativeName: "{{ feature_type_result.feature_type.name }}"
+        title: "{{ feature_type_result.feature_type.title }}"
+        abstract: "{{ feature_type_result.feature_type.abstract }}"
+        srs: EPSG:25832
+        projectionPolicy: FORCE_DECLARED
+        enabled: true
+        advertised: true
+    headers:
+      Accept: application/json
+      Authorization: >-
+        Basic {{ ((baikor_geoserver_credentials.resources[0].data['geoserver-user'] | b64decode)
+        ~ ':' ~ (baikor_geoserver_credentials.resources[0].data['geoserver-password'] | b64decode)) | b64encode }}
+    status_code: 201
+  loop: "{{ baikor_geoserver_feature_types.results }}"
+  loop_control:
+    loop_var: feature_type_result
+    label: "{{ feature_type_result.feature_type.name }}"
+  when: feature_type_result.status == 404
+  no_log: true
+
+- name: "Baikor_R GeoServer: Apply construction-site style to published layer"
+  ansible.builtin.uri:
+    method: PUT
+    url: "{{ baikor_geoserver_layer_url }}"
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body:
+      layer:
+        defaultStyle:
+          name: "{{ inv_addons.baikor_r.publication.style_name }}"
+          workspace: "{{ inv_addons.baikor_r.publication.workspace }}"
+    headers:
+      Accept: application/json
+      Authorization: >-
+        Basic {{ ((baikor_geoserver_credentials.resources[0].data['geoserver-user'] | b64decode)
+        ~ ':' ~ (baikor_geoserver_credentials.resources[0].data['geoserver-password'] | b64decode)) | b64encode }}
+    status_code: 200
+  no_log: true

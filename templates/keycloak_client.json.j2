@@ -1,0 +1,44 @@
+{
+  "clientId": "baikor-r",
+  "name": "Baikor_R Baustellenmanagement",
+  "description": "CIVITAS/CORE addon for managing construction sites.",
+  "rootUrl": "https://{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}",
+  "baseUrl": "/",
+  "enabled": true,
+  "clientAuthenticatorType": "client-secret",
+  "redirectUris": [
+    "https://{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}/*"
+  ],
+  "webOrigins": [
+    "https://{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}"
+  ],
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": false,
+  "publicClient": false,
+  "frontchannelLogout": true,
+  "protocol": "openid-connect",
+  "attributes": {
+    "post.logout.redirect.uris": "https://{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}/*",
+    "backchannel.logout.session.required": "true"
+  },
+  "fullScopeAllowed": true,
+  "protocolMappers": [
+    {
+      "name": "Baikor client roles",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-client-role-mapper",
+      "consentRequired": false,
+      "config": {
+        "multivalued": "true",
+        "userinfo.token.claim": "true",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "claim.name": "roles",
+        "usermodel.clientRoleMapping.clientId": "baikor-r"
+      }
+    }
+  ],
+  "defaultClientScopes": ["profile", "email", "roles", "web-origins"]
+}

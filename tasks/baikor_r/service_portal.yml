@@ -1,0 +1,57 @@
+---
+# Use Core's extra_apps contract. Shared portal startup and cache policy belong
+# to the platform operator, not to an application addon.
+- name: "Baikor_R service portal: Define application card"
+  ansible.builtin.set_fact:
+    baikor_service_portal_card:
+      id: baikor-r
+      name: Baustellenmanagement
+      icon: "https://{{ inv_addons.baikor_r.subdomain }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}/icon.svg"
+      description:
+        en: Create, import and manage construction sites.
+        de: Baustellen erfassen, importieren und verwalten.
+      role: ""
+      url: "https://{{ inv_addons.baikor_r.subdomain }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}/launch.html"
+
+- name: "Baikor_R service portal: Merge application card into Core inventory"
+  ansible.builtin.set_fact:
+    inv_access: >-
+      {{ inv_access | combine({'service_portal': {'apps': {'extra_apps':
+        (inv_access.service_portal.apps.extra_apps | default([])
+         | rejectattr('id', 'equalto', 'baikor-r') | list) + [baikor_service_portal_card]
+      }}}, recursive=True) }}
+
+- name: "Baikor_R service portal: Render Core apps configuration"
+  ansible.builtin.set_fact:
+    baikor_service_portal_configuration: "{{ lookup('template', 'access/service_portal/apps.js.j2') }}"
+
+- name: "Baikor_R service portal: Update apps configuration"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_access.service_portal.ns_name }}"
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: apps.js
+      data:
+        apps.js: "{{ baikor_service_portal_configuration }}"
+
+- name: "Baikor_R service portal: Refresh mounted configuration by checksum"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_access.service_portal.ns_name }}"
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: service-portal
+      spec:
+        template:
+          metadata:
+            annotations:
+              baikor-r.civitasconnect.digital/apps-hash: "{{ baikor_service_portal_configuration | hash('sha256') }}"

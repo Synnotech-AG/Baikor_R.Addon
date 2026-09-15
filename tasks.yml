@@ -1,0 +1,10 @@
+---
+- name: Include Baikor_R vars
+  include_vars:
+    dir: vars
+  tags: ["addons", "addon_baikor_r"]
+
+- name: Setup Baikor_R
+  import_tasks: tasks/baikor_r.yml
+  when: inv_addons.baikor_r.enable
+  tags: ["addons", "addon_baikor_r"]

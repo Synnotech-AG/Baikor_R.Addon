@@ -1,0 +1,104 @@
+- name: "Baikor_R: Create TLS Certificate for Gateway"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: "baikor-r-gateway-tls"
+        namespace: "{{ k8s_namespace }}"
+      spec:
+        secretName: "baikor-r-gateway-tls"
+        issuerRef:
+          kind: ClusterIssuer
+          name: "{{ inv_k8s.cert_manager.issuer_name }}"
+        dnsNames:
+          - "{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}"
+
+- name: "Baikor_R: Create Gateway"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: Gateway
+      metadata:
+        name: "baikor-r"
+        namespace: "{{ k8s_namespace }}"
+      spec:
+        gatewayClassName: "{{ inv_k8s.gateway_class }}"
+        listeners:
+          - name: https
+            port: 443
+            protocol: HTTPS
+            hostname: "{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}"
+            tls:
+              mode: Terminate
+              certificateRefs:
+                - kind: Secret
+                  name: "baikor-r-gateway-tls"
+            allowedRoutes:
+              namespaces:
+                from: Same
+          - name: http
+            port: 80
+            protocol: HTTP
+            hostname: "{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}"
+            allowedRoutes:
+              namespaces:
+                from: Same
+
+- name: "Baikor_R: Create HTTPRoute"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "baikor-r"
+        namespace: "{{ k8s_namespace }}"
+      spec:
+        parentRefs:
+          - name: "baikor-r"
+            namespace: "{{ k8s_namespace }}"
+            sectionName: https
+        hostnames:
+          - "{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}"
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /
+            backendRefs:
+              - name: "baikor-r"
+                port: 80
+
+- name: "Baikor_R: Create HTTP to HTTPS redirect HTTPRoute"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "baikor-r-http-redirect"
+        namespace: "{{ k8s_namespace }}"
+      spec:
+        parentRefs:
+          - name: "baikor-r"
+            namespace: "{{ k8s_namespace }}"
+            sectionName: http
+        hostnames:
+          - "{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}"
+        rules:
+          - filters:
+              - type: RequestRedirect
+                requestRedirect:
+                  scheme: https
+                  statusCode: 301

@@ -1,0 +1,85 @@
+---
+- name: "Baikor_R database: Validate bootstrap inputs"
+  ansible.builtin.assert:
+    that:
+      - inv_addons.baikor_r.database.bootstrap.admin_secret | length > 0
+      - inv_addons.baikor_r.database.name is match('^[a-z][a-z0-9_]*$')
+    fail_msg: "Database bootstrap needs operator admin credentials and a dedicated publication secret."
+
+- name: "Baikor_R database: Look up publication login"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    kind: Secret
+    name: "{{ inv_addons.baikor_r.database.publication_secret }}"
+  register: baikor_publication_login
+  when: inv_addons.baikor_r.publication.enable | bool
+  no_log: true
+
+- name: "Baikor_R database: Generate dedicated publication login once"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ inv_addons.baikor_r.database.publication_secret }}"
+      type: Opaque
+      stringData:
+        username: "{{ inv_addons.baikor_r.database.bootstrap.publication_username }}"
+        password: "{{ lookup('ansible.builtin.password', '/dev/null', length=48, chars=['ascii_letters', 'digits']) }}"
+  when:
+    - inv_addons.baikor_r.publication.enable | bool
+    - baikor_publication_login.resources | length == 0
+  no_log: true
+
+- name: "Baikor_R database: Install bootstrap SQL"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: baikor-r-database-bootstrap
+      data:
+        bootstrap.sql: "{{ lookup('file', addon_dir + 'templates/database_bootstrap.sql') }}"
+
+- name: "Baikor_R database: Remove previous completed bootstrap job"
+  kubernetes.core.k8s:
+    state: absent
+    delete_options:
+      propagationPolicy: Foreground
+    wait: true
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    kind: Job
+    name: baikor-r-database-bootstrap
+
+- name: "Baikor_R database: Reconcile database and least-privilege grants"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    definition: "{{ lookup('template', addon_dir + 'templates/database_bootstrap_job.yml.j2') | from_yaml }}"
+
+- name: "Baikor_R database: Wait for bootstrap success"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    kind: Job
+    name: baikor-r-database-bootstrap
+  register: baikor_database_bootstrap_job
+  until: baikor_database_bootstrap_job.resources[0].status.succeeded | default(0) | int == 1
+  failed_when: baikor_database_bootstrap_job.resources[0].status.failed | default(0) | int > 0
+  retries: 90
+  delay: 2

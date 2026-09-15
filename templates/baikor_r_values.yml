@@ -1,0 +1,63 @@
+# Values for the Baikor_R Helm chart.
+# Environment-specific overrides can be supplied through inv_addons.baikor_r.helm_values.
+
+---
+replicaCount: 1
+
+image:
+  repository: {{ baikor_registry_plan.application.image | to_json }}
+  tag: "{{ software.addon_baikor_r.baikor_r.tag }}"
+  pullPolicy: IfNotPresent
+
+{% if baikor_registry_plan.application.secret | length > 0 %}
+imagePullSecrets:
+  - name: "{{ baikor_registry_plan.application.secret }}"
+{% else %}
+imagePullSecrets: []
+{% endif %}
+
+aspnetCore:
+  environment: "{{ ENVIRONMENT | default('Production') }}"
+
+authentication:
+  caConfigMap: "{{ 'baikor-r-platform-ca' if inv_k8s.ingress.ca_path | default('') | length > 0 else '' }}"
+  enabled: true
+  authority: "{{ inv_access.platform.hostname }}/realms/{{ inv_access.tenant.realm_name }}"
+  clientId: "baikor-r"
+  clientSecret: ""
+  existingSecret:
+    name: "baikor-r-keycloak"
+    key: clientSecret
+  allowInvalidServerCertificate: "{{ inv_addons.baikor_r.authentication.allow_invalid_server_certificate | default(false) | bool }}"
+
+database:
+  caConfigMap: "{{ 'baikor-r-database-ca' if inv_addons.baikor_r.database.ca_secret | length > 0 else '' }}"
+  connectionString: ""
+  existingSecret:
+    name: "baikor-r-database"
+    key: connectionString
+  migrationExistingSecret:
+    name: "baikor-r-database-owner"
+    key: connectionString
+
+migrations:
+  enabled: true
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: "{{ inv_addons.baikor_r.enable_ingress | bool }}"
+  className: "{{ inv_k8s.ingress_class }}"
+  annotations: {}
+  hosts:
+    - host: "{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}"
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: "baikor-r-tls"
+      hosts:
+        - "{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}"

@@ -1,0 +1,63 @@
+# IDE and operating-system files
+.idea/
+.vs/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.tmp
+*.log
+
+# Ansible and Python runtime output
+.ansible/
+*.retry
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local configuration, credentials, and certificates
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.pfx
+*.p12
+.secrets/
+secrets/
+credentials/
+inventory.local.yml
+inventory.local.yaml
+inventory-*.local.yml
+inventory-*.local.yaml
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+.kube/
+.vault_pass*
+vault-password*
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# Local code-intelligence and agent configuration
+.claude/
+.gitnexus/
+AGENTS.md
+CLAUDE.md
+
+# Local backups and patch leftovers
+*.bak
+*.orig
+*.rej

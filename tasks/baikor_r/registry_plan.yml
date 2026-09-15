@@ -1,0 +1,21 @@
+---
+- name: "Baikor_R registry: Resolve application and bootstrap images before deployment"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ playbook_dir }}/{{ addon_dir }}scripts/deployment/registry.py"
+    stdin: >-
+      {{ {'addon': inv_addons.baikor_r, 'software': software.addon_baikor_r,
+          'core_registry': (inv_op_stack | default({})).private_registry | default({}),
+          'package': {'username': baikor_package_registry_username | default(''),
+                      'password': baikor_package_registry_password | default('')}} | to_json }}
+  register: baikor_registry_resolution
+  changed_when: false
+  check_mode: false
+  no_log: true
+
+- name: "Baikor_R registry: Store resolved image plan"
+  ansible.builtin.set_fact:
+    baikor_registry_plan: "{{ (baikor_registry_resolution.stdout | from_json).images }}"
+    baikor_registry_errors: "{{ (baikor_registry_resolution.stdout | from_json).errors }}"
+  no_log: true

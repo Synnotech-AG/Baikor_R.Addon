@@ -1,0 +1,149 @@
+---
+- name: "Baikor_R import: Validate dedicated machine client ID"
+  ansible.builtin.assert:
+    that:
+      - inv_addons.baikor_r.imports.service_account.client_id is match('^baikor-r-[a-z0-9-]+$')
+    fail_msg: "Use a dedicated baikor-r-* machine client ID, never the browser client or another application's client."
+
+- name: "Baikor_R Keycloak: Create import machine client"
+  ansible.builtin.uri:
+    method: POST
+    url: "{{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name }}/clients"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body: "{{ lookup('template', addon_dir | default('') + 'templates/keycloak_import_client.json.j2') }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: [201, 409]
+  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
+  no_log: true
+
+- name: "Baikor_R Keycloak: Find import machine client"
+  ansible.builtin.uri:
+    method: GET
+    url: >-
+      {{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name
+      }}/clients?clientId={{ inv_addons.baikor_r.imports.service_account.client_id | urlencode }}
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 200
+  register: baikor_import_keycloak_clients
+  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
+  no_log: true
+
+- name: "Baikor_R Keycloak: Store import client identifier"
+  ansible.builtin.set_fact:
+    baikor_import_keycloak_client_uuid: "{{ baikor_import_keycloak_clients.json[0].id }}"
+  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
+
+- name: "Baikor_R Keycloak: Update import machine client"
+  ansible.builtin.uri:
+    method: PUT
+    url: "{{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name }}/clients/{{ baikor_import_keycloak_client_uuid }}"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body: "{{ lookup('template', addon_dir | default('') + 'templates/keycloak_import_client.json.j2') }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 204
+  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
+  no_log: true
+
+- name: "Baikor_R Keycloak: Read import service account"
+  ansible.builtin.uri:
+    method: GET
+    url: >-
+      {{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name
+      }}/clients/{{ baikor_import_keycloak_client_uuid }}/service-account-user
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 200
+  register: baikor_import_service_account
+  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
+  no_log: true
+
+- name: "Baikor_R Keycloak: Read editor role"
+  ansible.builtin.uri:
+    method: GET
+    url: "{{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name }}/clients/{{ baikor_keycloak_client_uuid }}/roles/baikor_editor"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 200
+  register: baikor_keycloak_editor_role
+  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
+  no_log: true
+
+- name: "Baikor_R Keycloak: Authorize import to import construction sites"
+  ansible.builtin.uri:
+    method: POST
+    url: >-
+      {{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name
+      }}/users/{{ baikor_import_service_account.json.id
+      }}/role-mappings/clients/{{ baikor_keycloak_client_uuid }}
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body:
+      - "{{ baikor_keycloak_editor_role.json }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 204
+  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
+  no_log: true
+
+- name: "Baikor_R Keycloak: Restrict import token scope to editor role"
+  ansible.builtin.uri:
+    method: POST
+    url: >-
+      {{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name
+      }}/clients/{{ baikor_import_keycloak_client_uuid
+      }}/scope-mappings/clients/{{ baikor_keycloak_client_uuid }}
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body:
+      - "{{ baikor_keycloak_editor_role.json }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 204
+  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
+  no_log: true
+
+- name: "Baikor_R Keycloak: Read import client secret"
+  ansible.builtin.uri:
+    method: GET
+    url: "{{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name }}/clients/{{ baikor_import_keycloak_client_uuid }}/client-secret"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 200
+  register: baikor_import_keycloak_client_secret
+  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
+  no_log: true
+
+
+- name: "Baikor_R import: Store machine credentials only in the application namespace"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ k8s_namespace }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: baikor-r-import-client
+      type: Opaque
+      stringData:
+        clientId: "{{ inv_addons.baikor_r.imports.service_account.client_id }}"
+        clientSecret: "{{ baikor_import_keycloak_client_secret.json.value }}"
+  no_log: true

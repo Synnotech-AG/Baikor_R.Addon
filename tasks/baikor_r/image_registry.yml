@@ -1,0 +1,29 @@
+---
+# Validation and existing-Secret checks already ran in preflight.
+- name: "Baikor_R registry: Create only addon-managed pull Secrets"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ image.value.namespace }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ image.value.secret }}"
+      type: kubernetes.io/dockerconfigjson
+      stringData:
+        .dockerconfigjson: >-
+          {{ {'auths': {image.value.host: {
+            'username': image.value.username,
+            'password': image.value.password,
+            'auth': (image.value.username ~ ':' ~ image.value.password) | b64encode
+          }}} | to_json }}
+  loop: "{{ baikor_registry_plan | dict2items }}"
+  loop_control:
+    loop_var: image
+    label: "{{ image.key }}"
+  when:
+    - image.value.secret | length > 0
+    - not image.value.existing
+  no_log: true

@@ -1,0 +1,53 @@
+---
+# Merge these settings into an EXISTING, working CIVITAS/CORE 1.7 inventory.
+# This is not a replacement for its hosts, kubeconfig, realm, DNS or Core settings.
+all:
+  children:
+    controller:
+      vars:
+        inv_addons:
+          import: true
+          addons:
+            # Preserve other operator addon entries when merging this list.
+            - addons/baikor_r_addon/tasks.yml
+          baikor_r:
+            enable: true
+            subdomain: baikor-r
+            authentication:
+              allow_invalid_server_certificate: false
+              assign_platform_admin_roles: false
+            image_registry:
+              inherit_core: true # enabled Core private registry; otherwise GitLab
+            database:
+              namespace: tenant-database-stack # CHANGE to operator database namespace
+              host: baikor-db.tenant-database-stack.svc.cluster.local # CHANGE; must match TLS certificate
+              port: 5432
+              name: baikor_r
+              application_secret: baikor-writer # generated once in the recommended bootstrap mode
+              migration_secret: baikor-owner
+              publication_secret: baikor-publisher # only needed when publication is enabled
+              ssl_mode: VerifyFull
+              trust_server_certificate: false
+              ca_secret: baikor-database-ca # existing ca.crt Secret; empty for system-trusted CA
+              bootstrap:
+                enable: true
+                admin_secret: baikor-bootstrap # existing username/password Secret
+                generate_credentials: true # fresh dedicated role names; existing Secrets preserved
+              local_provision:
+                enable: false
+            imports:
+              service_account:
+                enable: false # opt in for a dedicated machine client; no Node-RED changes
+                client_id: baikor-r-import
+            publication:
+              enable: false # approve public fields and configure GeoServer prerequisites first
+              masterportal:
+                enable: false
+            helm:
+              local_chart_path: ""
+            helm_values:
+              replicaCount: 1
+              dataProtection:
+                persistence:
+                  enabled: true
+                  storageClassName: "" # uses the cluster default; agree with operator

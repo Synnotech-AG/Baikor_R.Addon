@@ -1,0 +1,21 @@
+---
+# Export only: the operator decides how the portal consumes its input files.
+- name: "Baikor_R Masterportal: Create operator export directory"
+  ansible.builtin.file:
+    path: "{{ inv_addons.baikor_r.publication.masterportal.export_directory }}"
+    state: directory
+    mode: "0750"
+
+- name: "Baikor_R Masterportal: Export configuration merge tool"
+  ansible.builtin.template:
+    src: "{{ addon_dir }}templates/configure_masterportal.js.j2"
+    dest: "{{ inv_addons.baikor_r.publication.masterportal.export_directory }}/configure-masterportal.cjs"
+    mode: "0640"
+
+- name: "Baikor_R Masterportal: Explain operator configuration step"
+  ansible.builtin.debug:
+    msg: >-
+      Exported configure-masterportal.cjs. Run it with Node.js against your version-controlled
+      config.json and services.json, then deploy those files using your portal configuration workflow.
+      No shared Deployment or startup command was changed. See
+      core_platform/addons/baikor_r_addon/README.md, section "Optional Geoportal Publication".

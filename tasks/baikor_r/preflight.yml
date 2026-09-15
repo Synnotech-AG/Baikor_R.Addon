@@ -1,0 +1,55 @@
+---
+- name: "Baikor_R preflight: Build read-only prerequisite input"
+  ansible.builtin.set_fact:
+    baikor_preflight_input:
+      addon: "{{ inv_addons.baikor_r }}"
+      registry_errors: "{{ baikor_registry_errors }}"
+      images: "{{ baikor_registry_plan }}"
+      package:
+        username: "{{ baikor_package_registry_username }}"
+        password: "{{ baikor_package_registry_password }}"
+      access:
+        namespace: "{{ inv_access.ns_name }}"
+        secret: "{{ inv_access.platform.k8s_secret_name }}"
+      geoserver_enabled: "{{ inv_gd.geoserver.enable | bool }}"
+      geodata_namespace: "{{ inv_gd.ns_name }}"
+  no_log: true
+
+- name: "Baikor_R preflight: Validate configuration and identify required Secrets"
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ playbook_dir }}/{{ addon_dir }}scripts/deployment/preflight.py"]
+    stdin: "{{ baikor_preflight_input | to_json }}"
+  register: baikor_preflight_config
+  changed_when: false
+  check_mode: false
+  no_log: true
+
+- name: "Baikor_R preflight: Read only the referenced Secrets"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ baikor_preflight_request.namespace }}"
+    kind: Secret
+    name: "{{ baikor_preflight_request.name }}"
+  loop: "{{ (baikor_preflight_config.stdout | from_json).requests }}"
+  loop_control:
+    loop_var: baikor_preflight_request
+    label: "{{ baikor_preflight_request.purpose }}"
+  register: baikor_preflight_secrets
+  no_log: true
+
+- name: "Baikor_R preflight: Check Secret keys and registry matches"
+  ansible.builtin.command:
+    argv: ["{{ ansible_playbook_python }}", "{{ playbook_dir }}/{{ addon_dir }}scripts/deployment/preflight.py"]
+    stdin: >-
+      {{ baikor_preflight_input | combine({'observed': baikor_preflight_secrets.results | default([])}) | to_json }}
+  register: baikor_preflight_result
+  changed_when: false
+  check_mode: false
+  no_log: true
+
+- name: "Baikor_R preflight: Report all prerequisite problems before any writes"
+  ansible.builtin.assert:
+    that: (baikor_preflight_result.stdout | from_json).errors | length == 0
+    fail_msg: "{{ (baikor_preflight_result.stdout | from_json).errors | join('\n') }}"
+    success_msg: "Baikor_R configuration and referenced Secrets passed preflight."

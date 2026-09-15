@@ -1,0 +1,144 @@
+---
+- name: "Baikor_R database: Read trusted database CA"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    kind: Secret
+    name: "{{ inv_addons.baikor_r.database.ca_secret }}"
+  register: baikor_database_ca
+  when: inv_addons.baikor_r.database.ca_secret | length > 0
+  no_log: true
+
+- name: "Baikor_R database: Copy only public CA into application namespace"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ k8s_namespace }}"
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: baikor-r-database-ca
+      data:
+        ca.crt: "{{ baikor_database_ca.resources[0].data['ca.crt'] | b64decode }}"
+  when: inv_addons.baikor_r.database.ca_secret | length > 0
+
+- name: "Baikor_R database: Validate operator-provided database configuration"
+  ansible.builtin.assert:
+    that:
+      - inv_addons.baikor_r.database.host | length > 0
+      - inv_addons.baikor_r.database.name | length > 0
+      - inv_addons.baikor_r.database.application_secret | length > 0
+      - inv_addons.baikor_r.database.migration_secret | length > 0
+    fail_msg: >-
+      Baikor_R requires an isolated PostgreSQL server and database supplied by
+      the platform operator. Configure host, name, application_secret,
+      migration_secret, and publication_secret under inv_addons.baikor_r.database.
+
+- name: "Baikor_R database: Read application credentials"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    kind: Secret
+    name: "{{ inv_addons.baikor_r.database.application_secret }}"
+  register: baikor_database_application_credentials
+  no_log: true
+
+- name: "Baikor_R database: Read migration credentials"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    kind: Secret
+    name: "{{ inv_addons.baikor_r.database.migration_secret }}"
+  register: baikor_database_migration_credentials
+  no_log: true
+
+- name: "Baikor_R database: Read publication credentials"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    kind: Secret
+    name: "{{ inv_addons.baikor_r.database.publication_secret }}"
+  register: baikor_database_publication_credentials
+  when: inv_addons.baikor_r.publication.enable | bool
+  no_log: true
+
+- name: "Baikor_R database: Require all database credentials"
+  ansible.builtin.assert:
+    that:
+      - baikor_database_application_credentials.resources | length == 1
+      - baikor_database_migration_credentials.resources | length == 1
+      - not inv_addons.baikor_r.publication.enable or baikor_database_publication_credentials.resources | length == 1
+    fail_msg: >-
+      The configured Baikor_R application, migration, or publication credential
+      Secret is missing from the database namespace.
+  no_log: true
+
+# Npgsql connection strings use doubled double quotes inside quoted values.
+# Base64 decoding alone does not protect semicolons or preserve whitespace.
+- name: "Baikor_R database: Create application connection secret"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ k8s_namespace }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: baikor-r-database
+      type: Opaque
+      stringData:
+        connectionString: >-
+          Host="{{ inv_addons.baikor_r.database.host | replace('"', '""') }}";
+          Port={{ inv_addons.baikor_r.database.port }};
+          Database="{{ inv_addons.baikor_r.database.name | replace('"', '""') }}";
+          Username="{{ baikor_database_application_credentials.resources[0].data.username | b64decode | replace('"', '""') }}";
+          Password="{{ baikor_database_application_credentials.resources[0].data.password | b64decode | replace('"', '""') }}";
+          SSL Mode={{ inv_addons.baikor_r.database.ssl_mode | default('VerifyFull') }};
+          Trust Server Certificate={{ inv_addons.baikor_r.database.trust_server_certificate | default(false) }};
+          {{ 'Root Certificate=/etc/baikor/database-ca/ca.crt;' if inv_addons.baikor_r.database.ca_secret | length > 0 else '' }}
+  register: baikor_database_application_connection_secret
+  no_log: true
+
+- name: "Baikor_R database: Create migration connection secret"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ k8s_namespace }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: baikor-r-database-owner
+      type: Opaque
+      stringData:
+        connectionString: >-
+          Host="{{ inv_addons.baikor_r.database.host | replace('"', '""') }}";
+          Port={{ inv_addons.baikor_r.database.port }};
+          Database="{{ inv_addons.baikor_r.database.name | replace('"', '""') }}";
+          Username="{{ baikor_database_migration_credentials.resources[0].data.username | b64decode | replace('"', '""') }}";
+          Password="{{ baikor_database_migration_credentials.resources[0].data.password | b64decode | replace('"', '""') }}";
+          SSL Mode={{ inv_addons.baikor_r.database.ssl_mode | default('VerifyFull') }};
+          Trust Server Certificate={{ inv_addons.baikor_r.database.trust_server_certificate | default(false) }};
+          {{ 'Root Certificate=/etc/baikor/database-ca/ca.crt;' if inv_addons.baikor_r.database.ca_secret | length > 0 else '' }}
+  register: baikor_database_migration_connection_secret
+  no_log: true
+
+# The chart refers to fixed Secret names. Including their resource versions in
+# the rendered pod template makes Helm run the migration hook and restart the
+# application whenever either connection changes, without exposing credentials.
+- name: "Baikor_R database: Define connection deployment revision"
+  ansible.builtin.set_fact:
+    baikor_database_connection_revision: >-
+      {{ (baikor_database_application_connection_secret.result.metadata.resourceVersion
+          ~ '-'
+          ~ baikor_database_migration_connection_secret.result.metadata.resourceVersion)
+         | hash('sha256') }}
+  no_log: true

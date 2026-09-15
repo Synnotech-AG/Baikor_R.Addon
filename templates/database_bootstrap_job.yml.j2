@@ -1,0 +1,81 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: baikor-r-database-bootstrap
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 180
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+{% if baikor_registry_plan.bootstrap.secret | length > 0 %}
+      imagePullSecrets:
+        - name: "{{ baikor_registry_plan.bootstrap.secret }}"
+{% endif %}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bootstrap
+          image: "{{ baikor_registry_plan.bootstrap.image }}:{{ baikor_registry_plan.bootstrap.tag }}"
+          command: [psql, -X, --file=/sql/bootstrap.sql]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 250m, memory: 128Mi}
+          env:
+            - name: PGHOST
+              value: "{{ inv_addons.baikor_r.database.host }}"
+            - name: PGPORT
+              value: "{{ inv_addons.baikor_r.database.port }}"
+            - name: PGDATABASE
+              value: "{{ inv_addons.baikor_r.database.bootstrap.maintenance_database }}"
+            - name: PGSSLMODE
+              value: "{{ {'VerifyFull': 'verify-full', 'VerifyCA': 'verify-ca', 'Require': 'require'}[inv_addons.baikor_r.database.ssl_mode] }}"
+{% if inv_addons.baikor_r.database.ca_secret | length > 0 %}
+            - name: PGSSLROOTCERT
+              value: /ca/ca.crt
+{% endif %}
+            - name: BAIKOR_DATABASE
+              value: "{{ inv_addons.baikor_r.database.name }}"
+            - name: BAIKOR_PUBLICATION_ENABLED
+              value: "{{ 'true' if inv_addons.baikor_r.publication.enable else 'false' }}"
+{% for prefix, secret in [('PG', inv_addons.baikor_r.database.bootstrap.admin_secret), ('BAIKOR_OWNER', inv_addons.baikor_r.database.migration_secret), ('BAIKOR_WRITER', inv_addons.baikor_r.database.application_secret), ('BAIKOR_PUBLISHER', inv_addons.baikor_r.database.publication_secret)] %}
+{% if prefix != 'BAIKOR_PUBLISHER' or inv_addons.baikor_r.publication.enable %}
+            - name: {{ 'PGUSER' if prefix == 'PG' else prefix }}
+              valueFrom:
+                secretKeyRef: {name: "{{ secret }}", key: username}
+            - name: {{ 'PGPASSWORD' if prefix == 'PG' else prefix + '_PASSWORD' }}
+              valueFrom:
+                secretKeyRef: {name: "{{ secret }}", key: password}
+{% else %}
+            - name: BAIKOR_PUBLISHER
+              value: ""
+            - name: BAIKOR_PUBLISHER_PASSWORD
+              value: ""
+{% endif %}
+{% endfor %}
+          volumeMounts:
+            - {name: sql, mountPath: /sql, readOnly: true}
+{% if inv_addons.baikor_r.database.ca_secret | length > 0 %}
+            - {name: ca, mountPath: /ca, readOnly: true}
+{% endif %}
+      volumes:
+        - name: sql
+          configMap: {name: baikor-r-database-bootstrap}
+{% if inv_addons.baikor_r.database.ca_secret | length > 0 %}
+        - name: ca
+          secret:
+            secretName: "{{ inv_addons.baikor_r.database.ca_secret }}"
+            items:
+              - {key: ca.crt, path: ca.crt}
+{% endif %}

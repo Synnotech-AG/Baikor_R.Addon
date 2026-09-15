@@ -1,0 +1,12 @@
+---
+- name: "Baikor_R package registry: Resolve credentials"
+  ansible.builtin.set_fact:
+    baikor_package_registry_username: >-
+      {{ inv_addons.baikor_r.package_registry.username
+         | default(lookup('env', 'BAIKOR_R_GITLAB_USERNAME'), true)
+         | default(inv_k8s.gitlab_access.user | default(''), true) }}
+    baikor_package_registry_password: >-
+      {{ inv_addons.baikor_r.package_registry.password
+         | default(lookup('env', 'BAIKOR_R_GITLAB_TOKEN'), true)
+         | default(inv_k8s.gitlab_access.token | default(''), true) }}
+  no_log: true

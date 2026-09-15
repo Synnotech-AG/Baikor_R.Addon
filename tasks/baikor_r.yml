@@ -1,0 +1,121 @@
+---
+- name: Set default facts for K8S
+  ansible.builtin.set_fact:
+    k8s_config: "{{ K8S_KUBECONFIG_PATH }}/{{ inv_addons.baikor_r.ns_kubeconfig }}"
+    k8s_context: "{{ inv_k8s.config.context }}"
+    k8s_namespace: "{{ inv_addons.baikor_r.ns_name }}"
+
+- name: "Baikor_R: Resolve Helm package credentials"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/package_registry.yml"
+
+- name: "Baikor_R: Resolve all image sources"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/registry_plan.yml"
+
+- name: "Baikor_R: Check prerequisites before making changes"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/preflight.yml"
+
+- name: "Create namespace {{ k8s_namespace }}"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ k8s_namespace }}"
+        labels:
+          name: "{{ k8s_namespace }}"
+  when: inv_addons.baikor_r.ns_create
+
+- name: "Baikor_R: Provision isolated local development database"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/local_database.yml"
+  when: inv_addons.baikor_r.database.local_provision.enable | default(false) | bool
+
+- name: "Baikor_R: Configure application image access"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/image_registry.yml"
+
+- name: "Baikor_R: Generate missing database logins when explicitly requested"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/database_credentials.yml"
+  when:
+    - inv_addons.baikor_r.database.bootstrap.enable | bool
+    - inv_addons.baikor_r.database.bootstrap.generate_credentials | default(false) | bool
+
+- name: "Baikor_R: Bootstrap operator-provided database server"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/database_bootstrap.yml"
+  when: inv_addons.baikor_r.database.bootstrap.enable | bool
+
+- name: "Baikor_R: Prepare database credentials"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/database.yml"
+
+- name: "Baikor_R: Configure Keycloak client and roles"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/keycloak.yml"
+
+- name: "Baikor_R: Create ingress certificate"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/ingress.yml"
+  when: inv_addons.baikor_r.enable_ingress
+
+- name: "Baikor_R: Create Gateway API resources"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/gateway.yml"
+  when: inv_addons.baikor_r.enable_gateway
+
+- name: "[Helm] Create the baikor_r stack Baikor_R installation"
+  ansible.builtin.include_tasks: tasks/templates/k8s-helm.yml
+  vars:
+    helm_repo_name: "{{ software.addon_baikor_r.baikor_r.helm_repo_name }}"
+    helm_repo_url: "{{ software.addon_baikor_r.baikor_r.helm_repo_url }}"
+    helm_chart_name: "{{ software.addon_baikor_r.baikor_r.helm_chart_name }}"
+    helm_release_name: "{{ software.addon_baikor_r.baikor_r.helm_release_name }}"
+    helm_chart_reference: "{{ helm_repo_name }}/{{ helm_chart_name }}"
+    helm_chart_version: "{{ software.addon_baikor_r.baikor_r.helm_chart_version }}"
+    helm_repo_username: "{{ baikor_package_registry_username }}"
+    helm_repo_password: "{{ baikor_package_registry_password }}"
+    helm_values_file: "{{ addon_dir | default('') + 'templates/baikor_r_values.yml' }}"
+    helm_values_rcombine: >-
+      {{ inv_addons.baikor_r.helm_values | default({})
+         | combine({'podAnnotations': {
+             'baikor-r.civitasconnect.digital/database-revision': baikor_database_connection_revision
+           }}, recursive=True) }}
+    helm_create_namespace: false
+  when:
+    - inv_addons.baikor_r.enable | bool
+    - inv_addons.baikor_r.helm.local_chart_path | default('') | length == 0
+
+- name: "[Helm] Install Baikor_R from a local development chart"
+  ansible.builtin.include_tasks: tasks/templates/k8s-helm.yml
+  vars:
+    helm_release_name: "{{ software.addon_baikor_r.baikor_r.helm_release_name }}"
+    helm_chart_reference: "{{ inv_addons.baikor_r.helm.local_chart_path }}"
+    helm_values_file: "{{ addon_dir | default('') + 'templates/baikor_r_values.yml' }}"
+    helm_values_rcombine: >-
+      {{ inv_addons.baikor_r.helm_values | default({})
+         | combine({'podAnnotations': {'baikor-r.civitasconnect.digital/local-rollout': now(utc=true, fmt='%Y%m%d%H%M%S')}}, recursive=True) }}
+    helm_create_namespace: false
+    helm_timeout: 10m
+  when:
+    - inv_addons.baikor_r.enable | bool
+    - inv_addons.baikor_r.helm.local_chart_path | default('') | length > 0
+
+- name: "Baikor_R: Reconcile publication grants after migrations"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/database_bootstrap.yml"
+  when: inv_addons.baikor_r.database.bootstrap.enable | bool
+
+- name: "Baikor_R: Publish the sanitized construction-site view in GeoServer"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/geoserver.yml"
+  when:
+    - inv_addons.baikor_r.publication.enable | default(false) | bool
+    - inv_gd.geoserver.enable
+
+- name: "Baikor_R: Export operator-owned Masterportal integration"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/masterportal.yml"
+  when:
+    - inv_addons.baikor_r.publication.enable | default(false) | bool
+    - inv_addons.baikor_r.publication.masterportal.enable | default(false) | bool
+    - inv_gd.geoserver.enable
+    - inv_gd.portal_backend.enable
+
+- name: "Baikor_R: Register service portal card"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/service_portal.yml"
+  when:
+    - inv_addons.baikor_r.service_portal.enable_card | default(true)
+    - inv_access.service_portal.enable

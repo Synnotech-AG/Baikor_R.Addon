@@ -1,0 +1,102 @@
+---
+- name: "Baikor_R local database: Issue server certificate"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: "{{ inv_addons.baikor_r.database.local_provision.tls_secret }}"
+      spec:
+        secretName: "{{ inv_addons.baikor_r.database.local_provision.tls_secret }}"
+        issuerRef:
+          kind: ClusterIssuer
+          name: "{{ inv_k8s.cert_manager.issuer_name }}"
+        dnsNames:
+          - "{{ inv_addons.baikor_r.database.host }}"
+          - "{{ inv_addons.baikor_r.database.local_provision.cluster_name }}"
+          - "{{ inv_addons.baikor_r.database.local_provision.cluster_name }}.{{ inv_addons.baikor_r.database.namespace }}.svc"
+
+- name: "Baikor_R local database: Wait for certificate"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    kind: Secret
+    name: "{{ inv_addons.baikor_r.database.local_provision.tls_secret }}"
+  register: baikor_database_certificate
+  until: baikor_database_certificate.resources | length == 1
+  retries: 30
+  delay: 2
+  no_log: true
+
+- name: "Baikor_R local database: Create isolated PostgreSQL cluster"
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    definition:
+      apiVersion: acid.zalan.do/v1
+      kind: postgresql
+      metadata:
+        name: "{{ inv_addons.baikor_r.database.local_provision.cluster_name }}"
+        labels:
+          app.kubernetes.io/name: baikor-r-database
+          app.kubernetes.io/part-of: baikor-r
+      spec:
+        teamId: "{{ inv_addons.baikor_r.database.local_provision.team_id }}"
+        spiloRunAsUser: 101
+        spiloRunAsGroup: 103
+        spiloFSGroup: 103
+        tls:
+          secretName: "{{ inv_addons.baikor_r.database.local_provision.tls_secret }}"
+        postgresql:
+          version: "{{ inv_addons.baikor_r.database.local_provision.postgres_version }}"
+        numberOfInstances: "{{ inv_addons.baikor_r.database.local_provision.instances }}"
+        enableLogicalBackup: false
+        enableMasterLoadBalancer: false
+        volume:
+          size: "{{ inv_addons.baikor_r.database.local_provision.storage_size }}"
+          storageClass: "{{ inv_addons.baikor_r.database.local_provision.storage_class }}"
+        preparedDatabases:
+          baikor_r:
+            defaultUsers: true
+            schemas:
+              public:
+                defaultRoles: false
+            extensions:
+              postgis: public
+        resources: "{{ inv_addons.baikor_r.database.local_provision.resources }}"
+
+- name: "Baikor_R local database: Wait for generated credentials"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    kind: Secret
+    name: "{{ inv_addons.baikor_r.database.application_secret }}"
+  register: baikor_local_database_credentials
+  until: baikor_local_database_credentials.resources | length == 1
+  retries: 60
+  delay: 2
+  no_log: true
+
+- name: "Baikor_R local database: Wait for PostgreSQL readiness"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_config }}"
+    context: "{{ k8s_context }}"
+    namespace: "{{ inv_addons.baikor_r.database.namespace }}"
+    api_version: apps/v1
+    kind: StatefulSet
+    name: "{{ inv_addons.baikor_r.database.local_provision.cluster_name }}"
+  register: baikor_local_database_stateful_set
+  until:
+    - baikor_local_database_stateful_set.resources | length == 1
+    - baikor_local_database_stateful_set.resources[0].status.readyReplicas | default(0) | int
+      == inv_addons.baikor_r.database.local_provision.instances | int
+  retries: 90
+  delay: 2
