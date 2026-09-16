@@ -2,14 +2,14 @@
 
 This addon deploys the Baikor_R construction-site management application into an
 existing CIVITAS/CORE 1.7.x platform. It uses the platform's existing Keycloak
-realm, routing and service portal. Application source code and the Helm chart are
-maintained in a separate Baikor_R application repository.
+realm and routing. Application source code and the Helm chart are maintained in a
+separate Baikor_R application repository.
 
 ## Features
 
 - Authenticated construction-site management with maps and attachments
 - PostgreSQL/PostGIS persistence
-- Ingress or Gateway API routing and a CIVITAS/CORE overview card
+- Ingress or Gateway API routing
 - Optional GeoServer/Masterportal publication and OAuth-protected import API
 
 ## Installation
@@ -131,8 +131,7 @@ ansible-playbook -i inventory.yml core_platform/playbook.yml --tags addons
 unset BAIKOR_R_PACKAGE_REGISTRY_USERNAME BAIKOR_R_PACKAGE_REGISTRY_PASSWORD
 ```
 
-The application is available at `https://baikor-r.YOUR_DOMAIN/` and through the
-**Baustellenmanagement** card in the CIVITAS/CORE overview.
+The application is available at `https://baikor-r.YOUR_DOMAIN/`.
 
 The addon creates the `baikor-r` client and these roles in the existing tenant
 realm; access to the platform can be granted by assigning those roles to users

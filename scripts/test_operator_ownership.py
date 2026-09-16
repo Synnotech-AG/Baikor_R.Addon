@@ -1,4 +1,4 @@
-"""Regression checks for operator-owned portal settings and absence of Node-RED writes.
+"""Regression checks for operator-owned platform settings and absence of shared-service writes.
 
 Requires Python/PyYAML/Jinja2 and Node.js. Uses temporary fixture files only.
 """
@@ -78,14 +78,11 @@ geo_tasks = yaml.safe_load((ROOT / 'tasks/baikor_r/geoserver.yml').read_text())
 assert all('kubernetes.core.k8s' not in task for task in geo_tasks), 'GeoServer deployment is operator-owned'
 masterportal = (ROOT / 'tasks/baikor_r/masterportal.yml').read_text()
 assert 'kubernetes.core.k8s' not in masterportal, 'Masterportal integration only exports controller files'
-portal = yaml.safe_load((ROOT / 'tasks/baikor_r/service_portal.yml').read_text())
-for task in portal:
-    definition = task.get('kubernetes.core.k8s', {}).get('definition', {})
-    if definition.get('kind') == 'Deployment':
-        assert 'spec' not in definition['spec']['template'], 'Shared portal containers are operator-owned'
-assert 'goodStatuses' not in json.dumps(portal)
+assert not (ROOT / 'tasks/baikor_r/service_portal.yml').exists(), 'The addon must not manage the Core service portal'
+assert 'service_portal' not in all_tasks, 'The addon must not register or update service-portal cards'
 defaults = yaml.safe_load((ROOT / 'default_inventory.yml').read_text())['all']['children']['controller']['vars']['inv_addons']['baikor_r']
 assert 'node_red' not in defaults
+assert 'service_portal' not in defaults
 assert defaults['publication']['enable'] is False
 assert defaults['imports']['service_account']['enable'] is False
-print('PASS: existing map, searches and layers preserved; idempotence and collision protection verified; no Node-RED or shared GeoServer writes.')
+print('PASS: existing map, searches and layers preserved; no Node-RED, service-portal or shared GeoServer deployment writes.')

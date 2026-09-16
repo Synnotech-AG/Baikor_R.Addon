@@ -113,9 +113,3 @@
     - inv_addons.baikor_r.publication.masterportal.enable | default(false) | bool
     - inv_gd.geoserver.enable
     - inv_gd.portal_backend.enable
-
-- name: "Baikor_R: Register service portal card"
-  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/service_portal.yml"
-  when:
-    - inv_addons.baikor_r.service_portal.enable_card | default(true)
-    - inv_access.service_portal.enable

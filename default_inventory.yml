@@ -124,11 +124,6 @@ all:
               # Name used when the addon creates the bootstrap pull Secret.
               image_pull_secret_name: baikor-r-bootstrap-registry
 
-            service_portal:
-              # Add the Baustellenmanagement card to the CIVITAS/CORE overview
-              # when the platform service portal itself is enabled.
-              enable_card: true
-
             imports:
               service_account:
                 # OPTIONAL: Create a confidential Keycloak machine client for the
