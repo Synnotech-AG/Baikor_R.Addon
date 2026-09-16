@@ -3,7 +3,7 @@
 This addon deploys the Baikor_R construction-site management application into an
 existing CIVITAS/CORE 1.7.x platform. It uses the platform's existing Keycloak
 realm, routing and service portal. Application source code and the Helm chart are
-maintained in the [Baikor_R application repository](https://gitlab.synnotech.de/cluster/baikor_r/app).
+maintained in a separate Baikor_R application repository.
 
 ## Features
 
@@ -19,8 +19,8 @@ maintained in the [Baikor_R application repository](https://gitlab.synnotech.de/
 - Working CIVITAS/CORE 1.7.x Ansible environment and Kubernetes access
 - Existing Keycloak tenant realm, DNS and HTTPS configuration
 - Operator-managed PostgreSQL server with PostGIS, TLS and persistent storage
-- Read access to this repository and a GitLab deploy token with `read_registry`
-  and `read_package_registry`
+- Read access to this repository and credentials with read access to the configured
+  container and Helm chart registries
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. The tested release combination
@@ -32,12 +32,10 @@ Run from the CIVITAS/CORE repository root:
 
 ```shell
 git submodule add https://github.com/Synnotech-AG/Baikor_R.Addon.git core_platform/addons/baikor_r_addon
-git -C core_platform/addons/baikor_r_addon fetch origin --tags
-git -C core_platform/addons/baikor_r_addon checkout 1.7.5
 ```
 
-Commit the submodule pointer in the operator's CIVITAS/CORE repository. A detached
-HEAD is expected for a submodule pinned to a release. For an existing submodule run:
+Commit the submodule pointer in the operator's CIVITAS/CORE repository. For an
+existing submodule run:
 
 ```shell
 git submodule update --init core_platform/addons/baikor_r_addon
@@ -49,43 +47,43 @@ Add Baikor_R to the existing CIVITAS/CORE inventory without removing other addon
 
 ```yaml
 all:
-  children:
-    controller:
-      vars:
-        inv_addons:
-          import: true
-          addons:
-            - addons/baikor_r_addon/tasks.yml
-          baikor_r:
-            enable: true
-            subdomain: baikor-r
-            database:
-              namespace: tenant-database-stack
-              host: postgres.tenant-database-stack.svc.cluster.local
-              name: baikor_r
-              ca_secret: baikor-database-ca
-              bootstrap:
-                enable: true
-                admin_secret: baikor-bootstrap
-                generate_credentials: true
-              local_provision:
-                enable: false
+    children:
+        controller:
+            vars:
+                inv_addons:
+                    import: true
+                    addons:
+                        - addons/baikor_r_addon/tasks.yml
+                    baikor_r:
+                        enable: true
+                        subdomain: baikor-r
+                        database:
+                            namespace: tenant-database-stack
+                            host: postgres.tenant-database-stack.svc.cluster.local
+                            name: baikor_r
+                            ca_secret: baikor-database-ca
+                            bootstrap:
+                                enable: true
+                                admin_secret: baikor-bootstrap
+                                generate_credentials: true
+                            local_provision:
+                                enable: false
 ```
 
-Replace `namespace` and `host` with customer values. The database host name must
+Replace `namespace` and `host` with real values. The database host name must
 match its TLS certificate. All defaults and optional settings are documented in
 [`default_inventory.yml`](default_inventory.yml); a complete example is available
 in [`examples/customer-inventory.yml`](examples/customer-inventory.yml).
 
 ### Required database Secrets
 
-Create these Secrets in `database.namespace` through the customer's existing
+Create these Secrets in `database.namespace` through the existing
 Ansible, secret-manager or GitOps workflow:
 
-| Secret | Keys | Purpose |
-| --- | --- | --- |
-| `baikor-bootstrap` | `username`, `password` | PostgreSQL administrator used to create the Baikor_R database, roles and PostGIS extension |
-| `baikor-database-ca` | `ca.crt` | PostgreSQL CA bundle; not required when the CA is already system-trusted |
+| Secret               | Keys                   | Purpose                                                                                    |
+| -------------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
+| `baikor-bootstrap`   | `username`, `password` | PostgreSQL administrator used to create the Baikor_R database, roles and PostGIS extension |
+| `baikor-database-ca` | `ca.crt`               | PostgreSQL CA bundle; not required when the CA is already system-trusted                   |
 
 With `generate_credentials: true`, the addon generates missing application and
 migration credentials once. It does not rotate existing credentials. Set
@@ -102,48 +100,49 @@ Ingress is enabled by default. To use Gateway API instead:
 
 ```yaml
 inv_addons:
-  baikor_r:
-    enable_ingress: false
-    enable_gateway: true
+    baikor_r:
+        enable_ingress: false
+        enable_gateway: true
 ```
 
 ### Registries
 
 The application image and Helm chart are pinned in
 [`vars/software_references.yml`](vars/software_references.yml) and pulled from
-GitLab by default. CIVITAS/CORE image mirrors can be inherited; the Helm chart
-continues to use the GitLab package registry. Explicit image mirrors are configured
-through `image_registry` and `bootstrap_image_registry` in `default_inventory.yml`.
+their configured registries. CIVITAS/CORE image mirrors can be inherited; the Helm
+chart continues to use its configured package registry. Explicit image mirrors are
+configured through `image_registry` and `bootstrap_image_registry` in
+`default_inventory.yml`.
 
 ## Deploy
 
-Provide the GitLab deploy-token credentials only to the Ansible process and run the
+Provide the package-registry credentials only to the Ansible process and run the
 normal CIVITAS/CORE addon deployment:
 
 ```shell
 set +x
-read -r -p 'GitLab deploy-token username: ' BAIKOR_R_GITLAB_USERNAME
-read -r -s -p 'GitLab deploy token: ' BAIKOR_R_GITLAB_TOKEN
+read -r -p 'Package-registry username: ' BAIKOR_R_PACKAGE_REGISTRY_USERNAME
+read -r -s -p 'Package-registry password: ' BAIKOR_R_PACKAGE_REGISTRY_PASSWORD
 printf '\n'
-export BAIKOR_R_GITLAB_USERNAME BAIKOR_R_GITLAB_TOKEN
+export BAIKOR_R_PACKAGE_REGISTRY_USERNAME BAIKOR_R_PACKAGE_REGISTRY_PASSWORD
 
 ansible-playbook -i inventory.yml core_platform/playbook.yml --tags addons
 
-unset BAIKOR_R_GITLAB_USERNAME BAIKOR_R_GITLAB_TOKEN
+unset BAIKOR_R_PACKAGE_REGISTRY_USERNAME BAIKOR_R_PACKAGE_REGISTRY_PASSWORD
 ```
 
 The application is available at `https://baikor-r.YOUR_DOMAIN/` and through the
 **Baustellenmanagement** card in the CIVITAS/CORE overview.
 
 The addon creates the `baikor-r` client and these roles in the existing tenant
-realm; it does not create a realm or users:
+realm; access to the platform can be granted by assigning those roles to users
 
-| Role | Access |
-| --- | --- |
-| `baikor_viewer` | Read construction sites |
-| `baikor_editor` | Create, edit, import and delete construction sites |
-| `baikor_approver` | Approve construction sites |
-| `baikor_admin` | Full application access |
+| Role              | Access                                             |
+| ----------------- | -------------------------------------------------- |
+| `baikor_viewer`   | Read construction sites                            |
+| `baikor_editor`   | Create, edit, import and delete construction sites |
+| `baikor_approver` | Approve construction sites                         |
+| `baikor_admin`    | Full application access                            |
 
 Assign roles to the intended customer users or groups. Keep
 `authentication.assign_platform_admin_roles: false` in production.
@@ -159,14 +158,14 @@ The operator must also approve the public workspace and WMS/WFS access rules.
 
 ```yaml
 inv_addons:
-  baikor_r:
-    publication:
-      enable: true
-      workspace: ds_open_data
-      datastore: baikor-r
-      masterportal:
-        enable: true
-        export_directory: /secure/operator/baikor-portal-export
+    baikor_r:
+        publication:
+            enable: true
+            workspace: ds_open_data
+            datastore: baikor-r
+            masterportal:
+                enable: true
+                export_directory: /secure/operator/baikor-portal-export
 ```
 
 The addon creates its GeoServer datastore, feature types and style. It exports a
@@ -187,11 +186,11 @@ Node-RED flows. Enable an addon-managed machine client only when required:
 
 ```yaml
 inv_addons:
-  baikor_r:
-    imports:
-      service_account:
-        enable: true
-        client_id: baikor-r-import
+    baikor_r:
+        imports:
+            service_account:
+                enable: true
+                client_id: baikor-r-import
 ```
 
 Its credentials are stored in the `baikor-r-import-client` Secret in the application
@@ -213,11 +212,12 @@ records still exist.
 
 ## Update
 
-Back up the database, pin the new addon release and run the same Ansible deployment:
+Back up the database, pin the new addon commit or release and run the same Ansible
+deployment:
 
 ```shell
-git -C core_platform/addons/baikor_r_addon fetch origin --tags
-git -C core_platform/addons/baikor_r_addon checkout NEW_VERSION
+git -C core_platform/addons/baikor_r_addon fetch origin
+git -C core_platform/addons/baikor_r_addon checkout NEW_REF
 ansible-playbook -i inventory.yml core_platform/playbook.yml --tags addons
 ```
 

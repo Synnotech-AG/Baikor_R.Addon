@@ -12,4 +12,3 @@ defaultSubdomain: baikor_r
 gatewayAPI: true
 helmInstall: true
 ingress: true
-renovateGitLabCI: true

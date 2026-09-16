@@ -17,7 +17,7 @@ all:
               allow_invalid_server_certificate: false
               assign_platform_admin_roles: false
             image_registry:
-              inherit_core: true # enabled Core private registry; otherwise GitLab
+              inherit_core: true # enabled Core private registry; otherwise the pinned source
             database:
               namespace: tenant-database-stack # CHANGE to operator database namespace
               host: baikor-db.tenant-database-stack.svc.cluster.local # CHANGE; must match TLS certificate

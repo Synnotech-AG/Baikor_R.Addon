@@ -12,8 +12,8 @@
 #   DEV ONLY  Never enable this in a customer production environment.
 #
 # Credential values default to empty strings. Supply them through the operator's
-# protected inventory/Ansible Vault, the existing Core GitLab access settings or
-# the documented deployment environment variables.
+# protected inventory/Ansible Vault, the package-registry settings or the
+# documented deployment environment variables.
 # -----------------------------------------------------------------------------
 
 ---
@@ -62,15 +62,15 @@ all:
               # CIVITAS/CORE platform admin. In production, assign roles explicitly.
               assign_platform_admin_roles: false
 
-            # Credentials for the private GitLab Helm package and application
-            # container registry. Empty values use the deployment environment and
-            # then fall back to inv_k8s.gitlab_access. The token needs
-            # read_package_registry and read_registry permissions.
+            # Credentials for the private Helm chart and application container
+            # registries. Empty values use the deployment environment. Grant only
+            # the read permissions required for charts and images.
             package_registry:
-              # GitLab deploy-token username.
+              # Package-registry username.
               username: ""
 
-              # GitLab deploy token. Use protected configuration, not plain Git.
+              # Package-registry password or token. Use protected configuration,
+              # not plain Git.
               password: ""
 
             # OPTIONAL: Override where the Baikor_R application image is pulled
@@ -81,7 +81,7 @@ all:
               inherit_core: true
 
               # Explicit mirror host in host[:port] form, without scheme or path.
-              # Empty means use the inherited Core mirror or pinned GitLab source.
+              # Empty means use the inherited Core mirror or pinned source.
               registry: ""
 
               # Repository path inside the explicit mirror. Empty preserves the
@@ -89,7 +89,7 @@ all:
               repository: ""
 
               # Credentials for an explicit mirror. They are not copied from the
-              # GitLab package credentials. Use protected operator configuration.
+              # package-registry credentials. Use protected operator configuration.
               username: ""
               password: ""
 
@@ -185,7 +185,7 @@ all:
 
             helm:
               # DEV ONLY: Absolute/local path to a Baikor_R Helm chart on the
-              # Ansible controller. Empty installs the pinned GitLab chart.
+              # Ansible controller. Empty installs the pinned chart.
               local_chart_path: ""
 
             # OPTIONAL: Values recursively merged into the generated Helm values.

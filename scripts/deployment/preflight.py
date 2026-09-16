@@ -16,7 +16,7 @@ def inspect(data):
     requests = []
     if not addon.get("helm", {}).get("local_chart_path"):
         if not data.get("package", {}).get("username") or not data.get("package", {}).get("password"):
-            errors.append("package_registry requires a GitLab username and token for the Helm chart.")
+            errors.append("package_registry requires a username and password for the Helm chart.")
     for field in ("host", "name", "namespace", "application_secret", "migration_secret"):
         if not db.get(field):
             errors.append("database." + field + " is required.")

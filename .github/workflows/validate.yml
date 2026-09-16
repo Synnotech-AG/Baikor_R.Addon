@@ -1,0 +1,61 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CIVITAS_CORE_VERSION: v1.7.2
+  ANSIBLE_DEV_TOOLS_IMAGE: ghcr.io/ansible/community-ansible-dev-tools@sha256:70f705fee2386deb320598ea011812292598111cca85f0107ee9479062628e79
+
+jobs:
+  validate-addon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate addon
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          CORE_DIRECTORY="$RUNNER_TEMP/civitas-core-validation"
+          ADDON_DIRECTORY="$CORE_DIRECTORY/core_platform/addons/baikor_r_addon"
+
+          git clone \
+            --branch "$CIVITAS_CORE_VERSION" \
+            --depth 1 \
+            https://gitlab.com/civitas-connect/civitas-core/civitas-core.git \
+            "$CORE_DIRECTORY"
+          mkdir -p "$ADDON_DIRECTORY"
+          git archive --format=tar "$GITHUB_SHA" | tar -xf - -C "$ADDON_DIRECTORY"
+
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            --env HOME=/tmp \
+            --volume "$CORE_DIRECTORY:/core" \
+            --workdir /core \
+            "$ANSIBLE_DEV_TOOLS_IMAGE" \
+            sh -lc '
+              ansible-galaxy collection install -r ansible-collections.yml &&
+              ansible-lint --offline core_platform/addons/baikor_r_addon &&
+              python3 core_platform/addons/baikor_r_addon/scripts/test_image_registry.py
+            '
+
+  validate-node-red-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Node-RED examples
+        run: >-
+          docker run --rm
+          --user "$(id -u):$(id -g)"
+          --volume "$GITHUB_WORKSPACE:/addon:ro"
+          --workdir /addon
+          node:22-alpine
+          node scripts/test_node_red_examples.cjs

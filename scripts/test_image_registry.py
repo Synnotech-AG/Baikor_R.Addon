@@ -22,15 +22,15 @@ class RegistryTests(unittest.TestCase):
     def setUp(self):
         self.core = dict(enable=True, registry_full_url="mirror.example:5000/project",
                          registry_url="mirror.example:5000", registry_username="mirror", registry_password="secret")
-        self.package = dict(username="gitlab", password="token")
+        self.package = dict(username="registry-user", password="token")
         self.args = dict(namespace="app", secret_name="pull", private_source=True)
 
     def image(self, config=None, core=None):
         return resolve(config or {}, SOFTWARE["baikor_r"], core or {}, self.package, **self.args)
 
-    def test_default_gitlab(self):
+    def test_default_registry(self):
         self.assertEqual(self.image()["host"], SOFTWARE["baikor_r"]["registry"])
-        self.assertEqual(self.image()["username"], "gitlab")
+        self.assertEqual(self.image()["username"], "registry-user")
 
     def test_inherit_enabled_core_with_path(self):
         result = self.image(core=self.core)
@@ -38,10 +38,10 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(result["username"], "mirror")
 
     def test_disabled_core_is_ignored(self):
-        self.assertEqual(self.image(core=dict(self.core, enable=False))["username"], "gitlab")
+        self.assertEqual(self.image(core=dict(self.core, enable=False))["username"], "registry-user")
 
     def test_opt_out(self):
-        self.assertEqual(self.image({"inherit_core": False}, self.core)["username"], "gitlab")
+        self.assertEqual(self.image({"inherit_core": False}, self.core)["username"], "registry-user")
 
     def test_explicit_wins(self):
         result = self.image(dict(registry="another.example", repository="app", username="u", password="p"), self.core)
