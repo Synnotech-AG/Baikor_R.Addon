@@ -19,8 +19,8 @@ maintained in a separate Baikor_R application repository.
 - Working CIVITAS/CORE 1.7.x Ansible environment and Kubernetes access
 - Existing Keycloak tenant realm, DNS and HTTPS configuration
 - Operator-managed PostgreSQL server with PostGIS, TLS and persistent storage
-- Read access to this repository and credentials with read access to the configured
-  container and Helm chart registries
+- Read access to the registries hosting the Baikor_R
+  container image and Helm chart
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. The tested release combination
