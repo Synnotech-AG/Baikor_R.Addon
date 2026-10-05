@@ -20,11 +20,9 @@ software:
       repository: library/postgres
       tag: "15.18-bookworm"
     baikor_r:
-      helm_chart_name: baikor-r
       helm_release_name: baikor-r
-      helm_repo_name: baikor-r
-      helm_repo_url: https://gitlab.synnotech.de/api/v4/projects/240/packages/helm/stable
-      helm_chart_version: 1.7.4
-      registry: gitlab-registry.synnotech.de
-      repository: cluster/baikor_r/app
-      tag: 1.7.4
+      helm_chart_reference: oci://registry-1.docker.io/synnotech-ag/baikor-r-chart
+      helm_chart_version: 1.7.5
+      registry: docker.io
+      repository: synnotech-ag/baikor-r
+      tag: 1.7.5

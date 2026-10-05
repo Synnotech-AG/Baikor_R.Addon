@@ -22,15 +22,15 @@ class RegistryTests(unittest.TestCase):
     def setUp(self):
         self.core = dict(enable=True, registry_full_url="mirror.example:5000/project",
                          registry_url="mirror.example:5000", registry_username="mirror", registry_password="secret")
-        self.package = dict(username="registry-user", password="token")
-        self.args = dict(namespace="app", secret_name="pull", private_source=True)
+        self.args = dict(namespace="app", secret_name="pull")
 
     def image(self, config=None, core=None):
-        return resolve(config or {}, SOFTWARE["baikor_r"], core or {}, self.package, **self.args)
+        return resolve(config or {}, SOFTWARE["baikor_r"], core or {}, **self.args)
 
     def test_default_registry(self):
         self.assertEqual(self.image()["host"], SOFTWARE["baikor_r"]["registry"])
-        self.assertEqual(self.image()["username"], "registry-user")
+        self.assertEqual(self.image()["username"], "")
+        self.assertEqual(self.image()["secret"], "")
 
     def test_inherit_enabled_core_with_path(self):
         result = self.image(core=self.core)
@@ -38,10 +38,10 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(result["username"], "mirror")
 
     def test_disabled_core_is_ignored(self):
-        self.assertEqual(self.image(core=dict(self.core, enable=False))["username"], "registry-user")
+        self.assertEqual(self.image(core=dict(self.core, enable=False))["username"], "")
 
     def test_opt_out(self):
-        self.assertEqual(self.image({"inherit_core": False}, self.core)["username"], "registry-user")
+        self.assertEqual(self.image({"inherit_core": False}, self.core)["username"], "")
 
     def test_explicit_wins(self):
         result = self.image(dict(registry="another.example", repository="app", username="u", password="p"), self.core)
@@ -66,7 +66,7 @@ class RegistryTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.image(config)
 
-    def test_core_credentials_never_use_helm_fallback(self):
+    def test_incomplete_core_credentials_are_rejected(self):
         with self.assertRaises(ValueError):
             self.image(core=dict(self.core, registry_password=""))
 
@@ -75,7 +75,7 @@ class RegistryTests(unittest.TestCase):
         addon.update(ns_name="app", subdomain="baikor-r")
         addon["image_registry"].update(username="", password="")
         addon["database"].update(namespace="db", host="db.example")
-        data = dict(addon=addon, software=SOFTWARE, core_registry=self.core, package=self.package)
+        data = dict(addon=addon, software=SOFTWARE, core_registry=self.core)
         result = plan(data)
         self.assertFalse(result["errors"])
         self.assertEqual(result["images"]["bootstrap"]["namespace"], "db")
@@ -100,7 +100,7 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(chart["imagePullSecrets"], [{"name": result["images"]["application"]["secret"]}])
 
     def test_public_bootstrap_needs_no_credentials(self):
-        result = resolve({}, SOFTWARE["postgres_client"], {}, {}, namespace="db", secret_name="boot")
+        result = resolve({}, SOFTWARE["postgres_client"], {}, namespace="db", secret_name="boot")
         self.assertEqual(result["secret"], "")
 
 
@@ -110,7 +110,7 @@ class PreflightTests(unittest.TestCase):
         self.addon["ns_name"] = "app"
         self.addon["database"].update(host="db.example", namespace="db", ca_secret="")
         self.addon["database"]["bootstrap"].update(admin_secret="admin", generate_credentials=True)
-        self.data = dict(addon=self.addon, package={"username": "u", "password": "secret"},
+        self.data = dict(addon=self.addon,
                          access={"namespace": "access", "secret": "idm"},
                          geoserver_enabled=True, geodata_namespace="geo", images={}, registry_errors=[])
 
@@ -121,8 +121,7 @@ class PreflightTests(unittest.TestCase):
 
     def test_collect_all_errors(self):
         self.addon["database"].update(host="", ssl_mode="wrong")
-        self.data["package"] = {}
-        self.assertEqual(len(inspect(self.data)["errors"]), 3)
+        self.assertEqual(len(inspect(self.data)["errors"]), 2)
 
     def test_generation_only_when_bootstrap_enabled(self):
         self.addon["database"]["bootstrap"]["enable"] = False

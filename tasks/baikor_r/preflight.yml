@@ -5,9 +5,6 @@
       addon: "{{ inv_addons.baikor_r }}"
       registry_errors: "{{ baikor_registry_errors }}"
       images: "{{ baikor_registry_plan }}"
-      package:
-        username: "{{ baikor_package_registry_username }}"
-        password: "{{ baikor_package_registry_password }}"
       access:
         namespace: "{{ inv_access.ns_name }}"
         secret: "{{ inv_access.platform.k8s_secret_name }}"

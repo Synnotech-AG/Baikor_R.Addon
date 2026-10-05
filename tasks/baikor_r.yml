@@ -5,9 +5,6 @@
     k8s_context: "{{ inv_k8s.config.context }}"
     k8s_namespace: "{{ inv_addons.baikor_r.ns_name }}"
 
-- name: "Baikor_R: Resolve Helm package credentials"
-  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/package_registry.yml"
-
 - name: "Baikor_R: Resolve all image sources"
   ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/registry_plan.yml"
 
@@ -62,14 +59,9 @@
 - name: "[Helm] Create the baikor_r stack Baikor_R installation"
   ansible.builtin.include_tasks: tasks/templates/k8s-helm.yml
   vars:
-    helm_repo_name: "{{ software.addon_baikor_r.baikor_r.helm_repo_name }}"
-    helm_repo_url: "{{ software.addon_baikor_r.baikor_r.helm_repo_url }}"
-    helm_chart_name: "{{ software.addon_baikor_r.baikor_r.helm_chart_name }}"
     helm_release_name: "{{ software.addon_baikor_r.baikor_r.helm_release_name }}"
-    helm_chart_reference: "{{ helm_repo_name }}/{{ helm_chart_name }}"
+    helm_chart_reference: "{{ software.addon_baikor_r.baikor_r.helm_chart_reference }}"
     helm_chart_version: "{{ software.addon_baikor_r.baikor_r.helm_chart_version }}"
-    helm_repo_username: "{{ baikor_package_registry_username }}"
-    helm_repo_password: "{{ baikor_package_registry_password }}"
     helm_values_file: "{{ addon_dir | default('') + 'templates/baikor_r_values.yml' }}"
     helm_values_rcombine: >-
       {{ inv_addons.baikor_r.helm_values | default({})

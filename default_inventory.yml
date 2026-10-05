@@ -12,8 +12,7 @@
 #   DEV ONLY  Never enable this in a customer production environment.
 #
 # Credential values default to empty strings. Supply them through the operator's
-# protected inventory/Ansible Vault, the package-registry settings or the
-# documented deployment environment variables.
+# protected inventory/Ansible Vault or an existing Kubernetes Secret.
 # -----------------------------------------------------------------------------
 
 ---
@@ -62,19 +61,8 @@ all:
               # CIVITAS/CORE platform admin. In production, assign roles explicitly.
               assign_platform_admin_roles: false
 
-            # Credentials for the private Helm chart and application container
-            # registries. Empty values use the deployment environment. Grant only
-            # the read permissions required for charts and images.
-            package_registry:
-              # Package-registry username.
-              username: ""
-
-              # Package-registry password or token. Use protected configuration,
-              # not plain Git.
-              password: ""
-
             # OPTIONAL: Override where the Baikor_R application image is pulled
-            # from. This does not change the Helm chart repository.
+            # from. The pinned source is public and needs no pull Secret.
             image_registry:
               # Reuse an enabled CIVITAS/CORE private registry/mirror. Explicit
               # registry/repository values below take precedence.
@@ -89,7 +77,7 @@ all:
               repository: ""
 
               # Credentials for an explicit mirror. They are not copied from the
-              # package-registry credentials. Use protected operator configuration.
+              # public source. Use protected operator configuration.
               username: ""
               password: ""
 

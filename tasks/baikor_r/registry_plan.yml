@@ -6,9 +6,7 @@
       - "{{ playbook_dir }}/{{ addon_dir }}scripts/deployment/registry.py"
     stdin: >-
       {{ {'addon': inv_addons.baikor_r, 'software': software.addon_baikor_r,
-          'core_registry': (inv_op_stack | default({})).private_registry | default({}),
-          'package': {'username': baikor_package_registry_username | default(''),
-                      'password': baikor_package_registry_password | default('')}} | to_json }}
+          'core_registry': (inv_op_stack | default({})).private_registry | default({})} | to_json }}
   register: baikor_registry_resolution
   changed_when: false
   check_mode: false

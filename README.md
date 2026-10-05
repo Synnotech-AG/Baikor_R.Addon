@@ -19,12 +19,12 @@ separate Baikor_R application repository.
 - Working CIVITAS/CORE 1.7.x Ansible environment and Kubernetes access
 - Existing Keycloak tenant realm, DNS and HTTPS configuration
 - Operator-managed PostgreSQL server with PostGIS, TLS and persistent storage
-- Read access to the registries hosting the Baikor_R
-  container image and Helm chart
+- Network access to Docker Hub, which hosts the public Baikor_R container image
+  and OCI Helm chart
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. The tested release combination
-is addon **1.7.6** with application/chart **1.7.4** on CIVITAS/CORE **1.7.x**.
+is addon **1.7.7** with application/chart **1.7.5** on CIVITAS/CORE **1.7.x**.
 
 ### Add the addon to CIVITAS/CORE
 
@@ -109,26 +109,17 @@ inv_addons:
 
 The application image and Helm chart are pinned in
 [`vars/software_references.yml`](vars/software_references.yml) and pulled from
-their configured registries. CIVITAS/CORE image mirrors can be inherited; the Helm
-chart continues to use its configured package registry. Explicit image mirrors are
-configured through `image_registry` and `bootstrap_image_registry` in
-`default_inventory.yml`.
+their public Docker Hub repositories without credentials. CIVITAS/CORE image
+mirrors can still be inherited. Explicit image mirrors are configured through
+`image_registry` and `bootstrap_image_registry` in `default_inventory.yml`.
 
 ## Deploy
 
-Provide the package-registry credentials only to the Ansible process and run the
-normal CIVITAS/CORE addon deployment:
+Run the normal CIVITAS/CORE addon deployment; the public application image and
+chart do not require registry credentials:
 
 ```shell
-set +x
-read -r -p 'Package-registry username: ' BAIKOR_R_PACKAGE_REGISTRY_USERNAME
-read -r -s -p 'Package-registry password: ' BAIKOR_R_PACKAGE_REGISTRY_PASSWORD
-printf '\n'
-export BAIKOR_R_PACKAGE_REGISTRY_USERNAME BAIKOR_R_PACKAGE_REGISTRY_PASSWORD
-
 ansible-playbook -i inventory.yml core_platform/playbook.yml --tags addons
-
-unset BAIKOR_R_PACKAGE_REGISTRY_USERNAME BAIKOR_R_PACKAGE_REGISTRY_PASSWORD
 ```
 
 The application is available at `https://baikor-r.YOUR_DOMAIN/`.
