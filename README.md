@@ -24,7 +24,7 @@ separate Baikor_R application repository.
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. The tested release combination
-is addon **1.7.5** with application/chart **1.7.4** on CIVITAS/CORE **1.7.x**.
+is addon **1.7.6** with application/chart **1.7.4** on CIVITAS/CORE **1.7.x**.
 
 ### Add the addon to CIVITAS/CORE
 
