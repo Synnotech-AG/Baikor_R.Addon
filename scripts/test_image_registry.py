@@ -152,6 +152,61 @@ class PreflightTests(unittest.TestCase):
         self.data["observed"] = [{"item": r, "resources": [secret]} for r in requests]
         self.assertIn("must not share a username", inspect(self.data)["errors"][0])
 
+    def test_owner_login_can_reconcile_with_same_or_separate_secret(self):
+        for same_secret in (True, False):
+            with self.subTest(same_secret=same_secret):
+                data = copy.deepcopy(self.data)
+                db = data["addon"]["database"]
+                db["bootstrap"].update(generate_credentials=False, maintenance_database=db["name"])
+                if same_secret:
+                    db["bootstrap"]["admin_secret"] = db["migration_secret"]
+                result = inspect(data)
+                self.assertEqual(result["errors"], [])
+                data["observed"] = []
+                for request in result["requests"]:
+                    if request["kind"] != "credentials":
+                        continue
+                    username = "writer" if request["purpose"] == "Database writer" else "owner"
+                    secret = {"data": {k: base64.b64encode(v.encode()).decode()
+                                       for k, v in {"username": username, "password": "pw"}.items()}}
+                    data["observed"].append({"item": request, "resources": [secret]})
+                self.assertEqual(inspect(data)["errors"], [])
+
+    def test_bootstrap_must_not_reuse_writer_or_publisher_secret(self):
+        self.addon["publication"]["enable"] = True
+        for field in ("application_secret", "publication_secret"):
+            with self.subTest(field=field):
+                self.addon["database"]["bootstrap"]["admin_secret"] = self.addon["database"][field]
+                self.assertTrue(inspect(self.data)["errors"])
+
+    def test_only_bootstrap_and_owner_may_share_database_username(self):
+        self.addon["publication"]["enable"] = True
+        purposes = ("Database administrator", "Database writer", "Database owner", "Database publisher")
+        for first, second in ((purposes[0], purposes[1]), (purposes[0], purposes[3]),
+                              (purposes[1], purposes[2]), (purposes[1], purposes[3]),
+                              (purposes[2], purposes[3])):
+            with self.subTest(first=first, second=second):
+                data = copy.deepcopy(self.data)
+                data["observed"] = []
+                for request in inspect(data)["requests"]:
+                    if request["kind"] != "credentials":
+                        continue
+                    username = "shared" if request["purpose"] in (first, second) else request["purpose"]
+                    secret = {"data": {k: base64.b64encode(v.encode()).decode()
+                                       for k, v in {"username": username, "password": "pw"}.items()}}
+                    data["observed"].append({"item": request, "resources": [secret]})
+                self.assertTrue(inspect(data)["errors"])
+
+    def test_owner_operation_does_not_require_initial_admin_secret(self):
+        db = self.addon["database"]
+        db["bootstrap"].update(admin_secret=db["migration_secret"], generate_credentials=False,
+                               maintenance_database=db["name"])
+        result = inspect(self.data)
+        self.assertEqual(result["errors"], [])
+        self.assertNotIn("admin", [r["name"] for r in result["requests"]])
+        owner = next(r for r in result["requests"] if r["purpose"] == "Database owner")
+        self.assertFalse(owner["optional"])
+
     def test_publication_and_export_prerequisites(self):
         self.addon["publication"]["masterportal"]["enable"] = True
         self.assertEqual(len(inspect(self.data)["errors"]), 2)

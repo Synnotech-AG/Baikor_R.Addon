@@ -52,6 +52,42 @@
   register: baikor_geoserver_datastore
   no_log: true
 
+- name: "Baikor_R GeoServer: Define direct PostGIS connection parameters"
+  ansible.builtin.set_fact:
+    baikor_geoserver_datastore_type: PostGIS
+    baikor_geoserver_connection_parameters:
+      - "@key": host
+        "$": "{{ inv_addons.baikor_r.database.host }}"
+      - "@key": port
+        "$": "{{ inv_addons.baikor_r.database.port | string }}"
+      - "@key": database
+        "$": "{{ inv_addons.baikor_r.database.name }}"
+      - "@key": schema
+        "$": baikor
+      - "@key": user
+        "$": "{{ baikor_database_publication_credentials.resources[0].data.username | b64decode }}"
+      - "@key": passwd
+        "$": "{{ baikor_database_publication_credentials.resources[0].data.password | b64decode }}"
+      - "@key": dbtype
+        "$": postgis
+      - "@key": SSL mode
+        "$": "{{ {'VerifyFull': 'VERIFY_FULL', 'VerifyCA': 'VERIFY_CA', 'Require': 'REQUIRE'}[inv_addons.baikor_r.database.ssl_mode] }}"
+  when: (inv_addons.baikor_r.publication.jndi_reference | default('')) == ''
+  no_log: true
+
+- name: "Baikor_R GeoServer: Define operator-managed JNDI connection parameters"
+  ansible.builtin.set_fact:
+    baikor_geoserver_datastore_type: PostGIS (JNDI)
+    baikor_geoserver_connection_parameters:
+      - "@key": dbtype
+        "$": postgis
+      - "@key": jndiReferenceName
+        "$": "{{ inv_addons.baikor_r.publication.jndi_reference }}"
+      - "@key": schema
+        "$": baikor
+  when: (inv_addons.baikor_r.publication.jndi_reference | default('')) != ''
+  no_log: true
+
 - name: "Baikor_R GeoServer: Create PostGIS datastore when absent"
   ansible.builtin.uri:
     method: POST
@@ -62,24 +98,9 @@
     body:
       dataStore:
         name: "{{ inv_addons.baikor_r.publication.datastore }}"
+        type: "{{ baikor_geoserver_datastore_type }}"
         connectionParameters:
-          entry:
-            - "@key": host
-              "$": "{{ inv_addons.baikor_r.database.host }}"
-            - "@key": port
-              "$": "{{ inv_addons.baikor_r.database.port | string }}"
-            - "@key": database
-              "$": "{{ inv_addons.baikor_r.database.name }}"
-            - "@key": schema
-              "$": baikor
-            - "@key": user
-              "$": "{{ baikor_database_publication_credentials.resources[0].data.username | b64decode }}"
-            - "@key": passwd
-              "$": "{{ baikor_database_publication_credentials.resources[0].data.password | b64decode }}"
-            - "@key": dbtype
-              "$": postgis
-            - "@key": SSL mode
-              "$": "{{ {'VerifyFull': 'VERIFY_FULL', 'VerifyCA': 'VERIFY_CA', 'Require': 'REQUIRE'}[inv_addons.baikor_r.database.ssl_mode] }}"
+          entry: "{{ baikor_geoserver_connection_parameters }}"
     headers:
       Accept: application/json
       Authorization: >-
@@ -99,24 +120,9 @@
     body:
       dataStore:
         name: "{{ inv_addons.baikor_r.publication.datastore }}"
+        type: "{{ baikor_geoserver_datastore_type }}"
         connectionParameters:
-          entry:
-            - "@key": host
-              "$": "{{ inv_addons.baikor_r.database.host }}"
-            - "@key": port
-              "$": "{{ inv_addons.baikor_r.database.port | string }}"
-            - "@key": database
-              "$": "{{ inv_addons.baikor_r.database.name }}"
-            - "@key": schema
-              "$": baikor
-            - "@key": user
-              "$": "{{ baikor_database_publication_credentials.resources[0].data.username | b64decode }}"
-            - "@key": passwd
-              "$": "{{ baikor_database_publication_credentials.resources[0].data.password | b64decode }}"
-            - "@key": dbtype
-              "$": postgis
-            - "@key": SSL mode
-              "$": "{{ {'VerifyFull': 'VERIFY_FULL', 'VerifyCA': 'VERIFY_CA', 'Require': 'REQUIRE'}[inv_addons.baikor_r.database.ssl_mode] }}"
+          entry: "{{ baikor_geoserver_connection_parameters }}"
     headers:
       Accept: application/json
       Authorization: >-

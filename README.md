@@ -1,9 +1,9 @@
 # Baikor_R.Addon
 
 This addon deploys the Baikor_R construction-site management application into an
-existing CIVITAS/CORE 1.7.x platform. It uses the platform's existing Keycloak
+existing CIVITAS/CORE platform. It uses the platform's existing Keycloak
 realm and routing. Application source code and the Helm chart are maintained in a
-separate Baikor_R application repository.
+separate [Baikor_R application repository](https://github.com/Synnotech-AG/Baikor_R).
 
 ## Features
 
@@ -16,15 +16,18 @@ separate Baikor_R application repository.
 
 ### Requirements
 
-- Working CIVITAS/CORE 1.7.x Ansible environment and Kubernetes access
+- Working CIVITAS/CORE 1.6.0 or 1.7.x Ansible environment and Kubernetes access;
+  Core 1.6.0 requires `enable_gateway: false`
 - Existing Keycloak tenant realm, DNS and HTTPS configuration
 - Operator-managed PostgreSQL server with PostGIS, TLS and persistent storage
-- Network access to Docker Hub, which hosts the public Baikor_R container image
-  and OCI Helm chart
+- Access to the configured container-image and OCI Helm-chart sources; verify
+  artifact availability as described under [Registries](#registries)
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
-does not install a database server in production. The tested release combination
-is addon **1.7.7** with application/chart **1.7.5** on CIVITAS/CORE **1.7.x**.
+does not install a database server in production. This addon revision pins
+application/chart **1.7.6** on GHCR. Application versions and Core versions are
+independent. Core 1.6.0 deployment evidence is recorded in the
+[deployment review](docs/core-1.6.0-deployment-review.md).
 
 ### Add the addon to CIVITAS/CORE
 
@@ -50,6 +53,9 @@ all:
     children:
         controller:
             vars:
+                inv_k8s:
+                    podSecurityAdmission:
+                        enable: true
                 inv_addons:
                     import: true
                     addons:
@@ -70,10 +76,28 @@ all:
                                 enable: false
 ```
 
-Replace `namespace` and `host` with real values. The database host name must
-match its TLS certificate. All defaults and optional settings are documented in
+`database.namespace` is freely selectable: choose an existing namespace for the
+database credential/CA Secrets and bootstrap jobs. It does not have to contain
+the PostgreSQL server or equal the application namespace. `database.host` can
+point to the MDH-managed PostgreSQL service in another namespace or to an external
+server; it must be reachable from the application and bootstrap jobs and match
+its TLS certificate. All defaults and optional settings are documented in
 [`default_inventory.yml`](default_inventory.yml); a complete example is available
 in [`examples/customer-inventory.yml`](examples/customer-inventory.yml).
+
+### Namespace security
+
+The addon creates or updates its application namespace through Core's
+`tasks/templates/k8s-namespace.yml`. With `ns_create: true`, it requires
+`inv_k8s.podSecurityAdmission.enable: true` and verifies that the namespace has
+`pod-security.kubernetes.io/enforce: restricted` before deploying workloads.
+This is a Core-wide inventory setting; other Core namespace tasks also use it.
+
+With `ns_create: false`, the operator must provide an existing namespace with
+that label. The addon verifies it without modifying the namespace. During
+Ansible check mode, managed namespace changes are only simulated; the observed
+label is verified on the actual deployment. Database bootstrap jobs run in
+`database.namespace`, whose security policy remains operator-managed.
 
 ### Required database Secrets
 
@@ -86,13 +110,75 @@ Ansible, secret-manager or GitOps workflow:
 | `baikor-database-ca` | `ca.crt`               | PostgreSQL CA bundle; not required when the CA is already system-trusted                   |
 
 With `generate_credentials: true`, the addon generates missing application and
-migration credentials once. It does not rotate existing credentials. Set
-`bootstrap.enable: false` only when the customer has already created the database,
-PostGIS extension, roles and grants.
+migration credentials once. It does not rotate existing credentials. MDH supplies
+the PostgreSQL server; the first addon deployment creates the dedicated database,
+PostGIS extension, schema, logins and grants on that server.
 
 Keep database certificate validation enabled. Secret values must not be committed
 to this repository or stored in plain inventory. The development-only manual
 Secret fallback is described in [`docs/INSTALLATION.md`](docs/INSTALLATION.md).
+
+### First deployment: bootstrap administrator
+
+For the operations in `templates/database_bootstrap.sql`, the initial login needs:
+
+- `LOGIN` and permission to connect to `bootstrap.maintenance_database`
+  (normally `postgres`) and the new Baikor_R database over the configured TLS path.
+- `CREATEROLE` to create missing owner, writer and optional publisher logins.
+- `CREATEDB` and permission to assign the new database to the owner role.
+- Permission to install PostGIS and to create the `baikor` schema for its owner,
+  grant access, and alter that owner's default privileges.
+
+On standard PostgreSQL/PostGIS, this complete first bootstrap requires a temporary
+superuser login because enabling PostGIS requires elevated extension privileges;
+`CREATEDB` and `CREATEROLE` alone are insufficient. Assigning ownership to another
+role also requires the appropriate membership/`SET ROLE` authority. See the
+[PostGIS setup guide](https://postgis.net/documentation/getting_started/) and
+[PostgreSQL ownership requirements](https://www.postgresql.org/docs/15/sql-createdatabase.html).
+
+MDH may instead provide a supported extension-installation capability or a
+default database template (`template1`) that already contains PostGIS, with the
+remaining creation and owner-role permissions. Agree that provisioning model with the database operator;
+the addon does not grant server-level privileges to its owner or runtime logins.
+
+### After first deployment: owner login for normal operation
+
+After a successful initial deployment, keep the existing database and credential
+Secrets and switch the bootstrap connection to the same login used for migrations:
+
+```yaml
+inv_addons:
+    baikor_r:
+        database:
+            application_secret: baikor-writer
+            migration_secret: baikor-owner
+            bootstrap:
+                enable: true
+                admin_secret: baikor-owner
+                maintenance_database: baikor_r # must match database.name
+                generate_credentials: false
+```
+
+`admin_secret` is the existing configuration key for the bootstrap connection; in
+this mode it references the owner Secret. A separate Secret containing that same
+owner login is also supported. Subsequent deployments no longer read or use the
+initial administrator Secret. Retire any dedicated temporary administrator login
+and Secret through MDH's credential-management process.
+
+The owner needs `LOGIN`, database connection access, and ownership of the Baikor_R
+database, `baikor` schema and migration-created objects. It needs no `SUPERUSER`,
+`CREATEDB`, `CREATEROLE` or `BYPASSRLS`. Keep the writer and optional publication
+login separate: the application continues to use its writer credential, and only
+deployment/migration jobs use the owner.
+
+Keep `bootstrap.enable: true` so owner jobs reconcile grants before and after
+migrations, including publication views recreated by an upgrade. Existing roles
+and passwords remain unchanged. New roles (for example when enabling publication
+later), a missing database or a missing PostGIS extension still require operator
+provisioning or a deliberate first-bootstrap run with suitable credentials.
+
+`bootstrap.enable: false` is reserved for fully operator-managed database objects
+and grants; the operator must then also reconcile grants after migrations.
 
 ### Ingress or Gateway API
 
@@ -108,15 +194,30 @@ inv_addons:
 ### Registries
 
 The application image and Helm chart are pinned in
-[`vars/software_references.yml`](vars/software_references.yml) and pulled from
-their public Docker Hub repositories without credentials. CIVITAS/CORE image
-mirrors can still be inherited. Explicit image mirrors are configured through
+[`vars/software_references.yml`](vars/software_references.yml):
+
+- Image: `ghcr.io/synnotech-ag/baikor-r:1.7.6`.
+- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `1.7.6`.
+
+Both Baikor packages are published through the application's
+[Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).
+The workflow verifies downloads without registry credentials before creating
+the release. Operators must permit GHCR downloads or mirror the artifacts.
+The PostgreSQL bootstrap client remains a separately pinned Docker Hub image.
+CIVITAS/CORE image mirrors can still be inherited. Explicit image mirrors are configured through
 `image_registry` and `bootstrap_image_registry` in `default_inventory.yml`.
+
+When adopting a new application release, update `helm_chart_version` and the
+application `tag` together in `vars/software_references.yml`, run addon CI, and
+publish the addon revision. Operators explicitly update their addon revision;
+an application release never silently upgrades a customer installation.
 
 ## Deploy
 
-Run the normal CIVITAS/CORE addon deployment; the public application image and
-chart do not require registry credentials:
+Before deployment, verify that the selected chart and application image can be
+retrieved through the operator's configured artifact sources. The local-chart and
+local-image test does not verify those distribution paths. Once access is
+confirmed, run the normal CIVITAS/CORE addon deployment:
 
 ```shell
 ansible-playbook -i inventory.yml core_platform/playbook.yml --tags addons
@@ -169,6 +270,27 @@ node /secure/operator/baikor-portal-export/configure-masterportal.cjs \
 Review and deploy the resulting portal changes through the customer's existing
 portal workflow.
 
+### Existing JDBC datasource (JNDI)
+
+Set `publication.jndi_reference: java:comp/env/jdbc/baikor` to use an existing
+operator-managed GeoServer datasource. The default is empty (direct PostGIS).
+The addon then sends only `dbtype: postgis`, `jndiReferenceName` and `schema: baikor`
+as connection parameters for both datastore creation and updates. It still reads
+the publisher Secret and reconciles its restricted database grants.
+
+Core 1.6.0's GeoServer 2.28.0 / GeoTools 34.0 has
+[GEOT-7625](https://github.com/geotools/geotools/commit/5ed80fe90ae1995cf04b14048fbb9ae5c35f926a):
+the direct datastore passes the SSL enum name incorrectly to PostgreSQL JDBC.
+JNDI avoids that URL construction without changing the shared GeoServer image.
+Before enabling this mode, the operator must provision the datasource through
+Core's GeoServer JNDI configuration, using the Baikor database and publisher login.
+Its JDBC URL must include `sslmode=verify-full`, a certificate-matching hostname,
+and `sslrootcert` pointing to a readable mounted PostgreSQL CA bundle (or an
+equivalent verified CA setup). The addon does not install the datasource or CA,
+and `database.ca_secret` does not automatically mount that CA into GeoServer.
+The preflight validates the reference's format; datasource availability and TLS
+are verified when GeoServer opens the published feature types.
+
 ## Optional Import API
 
 The addon exposes an import API but does not install or modify customer-owned
@@ -211,8 +333,24 @@ git -C core_platform/addons/baikor_r_addon checkout NEW_REF
 ansible-playbook -i inventory.yml core_platform/playbook.yml --tags addons
 ```
 
-Breaking inventory changes are documented in the release README. Database backups,
+Breaking inventory changes are documented in the
+[GitHub release notes](https://github.com/Synnotech-AG/Baikor_R.Addon/releases). Database backups,
 monitoring and credential rotation remain operator responsibilities.
+
+## Automated validation
+
+The [Validate workflow](.github/workflows/validate.yml) runs on pushes and pull
+requests. It covers Ansible lint, registry and preflight unit tests, GeoServer
+templates, operator ownership, Node-RED examples, Npgsql connection strings,
+database-owner privileges, namespace Pod Security Admission and the real
+database bootstrap Job.
+
+The database and Kubernetes checks create disposable PostGIS containers and a
+dedicated k3d cluster with synthetic credentials. They do not need an operator's
+inventory, cluster credentials or existing database. The cluster is removed
+after the job, including when a test fails. The application repository separately
+tests real Keycloak logins, role permissions and persistence in its own isolated
+environment before an application release can be published.
 
 ## License
 

@@ -5,6 +5,9 @@ all:
   children:
     controller:
       vars:
+        inv_k8s:
+          podSecurityAdmission:
+            enable: true # Core namespace template must enforce restricted
         inv_addons:
           import: true
           addons:
@@ -17,9 +20,9 @@ all:
               allow_invalid_server_certificate: false
               assign_platform_admin_roles: false
             image_registry:
-              inherit_core: true # enabled Core private mirror; otherwise public Docker Hub
+              inherit_core: true # enabled Core private mirror; otherwise public GHCR
             database:
-              namespace: tenant-database-stack # CHANGE to operator database namespace
+              namespace: tenant-database-stack # freely selectable existing Secret/job namespace
               host: baikor-db.tenant-database-stack.svc.cluster.local # CHANGE; must match TLS certificate
               port: 5432
               name: baikor_r
@@ -31,8 +34,9 @@ all:
               ca_secret: baikor-database-ca # existing ca.crt Secret; empty for system-trusted CA
               bootstrap:
                 enable: true
-                admin_secret: baikor-bootstrap # existing username/password Secret
+                admin_secret: baikor-bootstrap # first deployment; afterwards set to baikor-owner
                 generate_credentials: true # fresh dedicated role names; existing Secrets preserved
+                maintenance_database: postgres # afterwards set to baikor_r and generate_credentials: false
               local_provision:
                 enable: false
             imports:

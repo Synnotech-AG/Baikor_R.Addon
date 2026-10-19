@@ -1,0 +1,41 @@
+---
+- name: "Baikor_R namespace: Require Core Pod Security Admission"
+  ansible.builtin.assert:
+    that: inv_k8s.podSecurityAdmission.enable | default(false) | bool
+    fail_msg: >-
+      Enable inv_k8s.podSecurityAdmission.enable in the Core inventory so its
+      namespace template enforces restricted Pod Security for Baikor_R.
+  when: inv_addons.baikor_r.ns_create | bool
+
+- name: "Baikor_R namespace: Apply the Core namespace template"
+  ansible.builtin.include_tasks: tasks/templates/k8s-namespace.yml
+  when: inv_addons.baikor_r.ns_create | bool
+
+# Check mode only predicts a managed namespace's creation or label update.
+# Operator-owned namespaces must already satisfy the requirement in either mode.
+- name: "Baikor_R namespace: Verify enforced Pod Security"
+  when: not ansible_check_mode or not (inv_addons.baikor_r.ns_create | bool)
+  block:
+    - name: "Baikor_R namespace: Read application namespace"
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ k8s_config }}"
+        context: "{{ k8s_context }}"
+        api_version: v1
+        kind: Namespace
+        name: "{{ k8s_namespace }}"
+      register: baikor_application_namespace
+
+    - name: "Baikor_R namespace: Require an existing namespace"
+      ansible.builtin.assert:
+        that: baikor_application_namespace.resources | length == 1
+        fail_msg: "Create the operator-managed namespace {{ k8s_namespace }} before deploying Baikor_R."
+
+    - name: "Baikor_R namespace: Require restricted enforcement"
+      ansible.builtin.assert:
+        that: >-
+          (baikor_application_namespace.resources[0].metadata.labels | default({})).get(
+            'pod-security.kubernetes.io/enforce', '') == 'restricted'
+        fail_msg: >-
+          Namespace {{ k8s_namespace }} must have
+          pod-security.kubernetes.io/enforce=restricted before deploying Baikor_R.
+        success_msg: "Namespace {{ k8s_namespace }} enforces restricted Pod Security."

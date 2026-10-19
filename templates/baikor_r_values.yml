@@ -43,6 +43,21 @@ database:
 migrations:
   enabled: true
 
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 1654
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+
 service:
   type: ClusterIP
   port: 80

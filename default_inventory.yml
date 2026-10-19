@@ -37,6 +37,9 @@ all:
 
             # Create the application namespace. Set false only when the operator
             # creates and manages this namespace before running the addon.
+            # Creation uses the Core template and requires
+            # inv_k8s.podSecurityAdmission.enable: true. An operator-managed
+            # namespace must already enforce restricted Pod Security.
             ns_create: true
 
             # Kubernetes namespace for the application workload and its Secrets.
@@ -147,6 +150,12 @@ all:
               # not point it at an unrelated existing datastore.
               datastore: baikor-r
 
+              # OPTIONAL: Existing operator-managed GeoServer JDBC datasource.
+              # Example: java:comp/env/jdbc/baikor. Empty uses a direct connection.
+              # The datasource must use the publisher login, TLS hostname/CA
+              # verification and this database; see README for Core 1.6.
+              jndi_reference: ""
+
               # GeoServer feature type containing public area geometries for WMS,
               # WFS and map selection. Normally leave unchanged.
               feature_type: public_construction_site_areas
@@ -177,8 +186,9 @@ all:
             helm_values: {}
 
             database:
-              # REQUIRED: Namespace containing the PostgreSQL server and all
-              # database credential/CA Secrets. It may differ from the app namespace.
+              # REQUIRED: Freely selectable existing namespace for database
+              # credential/CA Secrets and bootstrap jobs. The PostgreSQL server
+              # may be in another namespace or external to Kubernetes.
               namespace: "{{ ENVIRONMENT }}-database-stack"
 
               # REQUIRED: PostgreSQL DNS name reachable from Kubernetes workloads.
@@ -210,19 +220,22 @@ all:
               ca_secret: ""
 
               bootstrap:
-                # Let the addon create/reconcile the database, PostGIS extension,
-                # roles and grants. Set false only when the operator provisions all
-                # objects and required permissions before the addon runs.
+                # Create database objects initially, then reconcile grants as owner.
+                # Keep true in normal owner operation, including after migrations.
+                # False delegates all provisioning/grant reconciliation to the operator.
                 enable: true
 
                 # REQUIRED when bootstrap.enable is true: Secret in
-                # database.namespace with username/password for a database admin.
+                # database.namespace with username/password for the bootstrap login.
+                # First deployment needs creation/extension privileges (see README).
+                # Afterwards set this to migration_secret to reconcile as owner.
                 # This credential is used by the deployment job only and is never
                 # passed to the application.
                 admin_secret: ""
 
                 # OPTIONAL: Generate application_secret and migration_secret once
                 # when they are missing. Existing Secrets/passwords are preserved.
+                # Set false after initial deployment when switching to owner login.
                 generate_credentials: false
 
                 # PostgreSQL role names used only when generating missing Secrets.
@@ -230,8 +243,8 @@ all:
                 application_username: baikor_r_writer
                 migration_username: baikor_r_owner
 
-                # Existing database to which the admin connects before creating
-                # the Baikor_R database. PostgreSQL installations normally use postgres.
+                # Initial connection database: normally postgres for first bootstrap.
+                # For owner operation, set to database.name (the existing Baikor_R DB).
                 maintenance_database: postgres
 
                 # PostgreSQL role name generated for GeoServer when publication is

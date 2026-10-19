@@ -11,19 +11,8 @@
 - name: "Baikor_R: Check prerequisites before making changes"
   ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/preflight.yml"
 
-- name: "Create namespace {{ k8s_namespace }}"
-  kubernetes.core.k8s:
-    state: present
-    kubeconfig: "{{ k8s_config }}"
-    context: "{{ k8s_context }}"
-    definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ k8s_namespace }}"
-        labels:
-          name: "{{ k8s_namespace }}"
-  when: inv_addons.baikor_r.ns_create
+- name: "Baikor_R: Prepare restricted application namespace"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/namespace.yml"
 
 - name: "Baikor_R: Provision isolated local development database"
   ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/local_database.yml"

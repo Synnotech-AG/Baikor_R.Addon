@@ -26,10 +26,12 @@ def inspect(data):
     names = [db.get("application_secret"), db.get("migration_secret")]
     if publication:
         names.append(db.get("publication_secret"))
-    if bootstrap.get("enable"):
+    # After initialization, the bootstrap job may reconcile grants as the owner.
+    # Runtime and publication credentials must remain separate from that login.
+    if bootstrap.get("enable") and bootstrap.get("admin_secret") != db.get("migration_secret"):
         names.append(bootstrap.get("admin_secret"))
     if len([name for name in names if name]) != len(set(name for name in names if name)):
-        errors.append("Database administrator, writer, owner and enabled publisher Secrets must be distinct.")
+        errors.append("Database writer, owner and enabled publisher Secrets must be distinct; bootstrap may reuse only the owner Secret.")
     if generate:
         users = [bootstrap.get("application_username"), bootstrap.get("migration_username")]
         if not all(users) or len(set(users)) != 2:
@@ -55,6 +57,10 @@ def inspect(data):
     if publication:
         if not data.get("geoserver_enabled"):
             errors.append("Publication requires Core GeoServer to be enabled.")
+        jndi_reference = addon["publication"].get("jndi_reference", "")
+        if not isinstance(jndi_reference, str) or (jndi_reference and not re.fullmatch(
+                r"java:comp/env/jdbc/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*", jndi_reference)):
+            errors.append("publication.jndi_reference must be empty or a local java:comp/env/jdbc/<name> reference.")
         require("geoserver-geoserver", data.get("geodata_namespace"), "Core GeoServer administrator", kind="geoserver")
     portal = addon.get("publication", {}).get("masterportal", {})
     if portal.get("enable"):
@@ -95,8 +101,10 @@ def inspect(data):
                     users[request["purpose"]] = decoded["username"]
             except (KeyError, ValueError, UnicodeError, TypeError):
                 errors.append(request["purpose"] + ": Secret is missing required nonempty keys or contains invalid data.")
+        if users.get("Database administrator") == users.get("Database owner"):
+            users.pop("Database administrator", None)
         if len(users.values()) != len(set(users.values())):
-            errors.append("Database administrator, writer, owner and publisher must not share a username.")
+            errors.append("Database writer, owner and publisher must not share a username; bootstrap may reuse only the owner login.")
     return {"errors": errors, "requests": requests}
 
 
