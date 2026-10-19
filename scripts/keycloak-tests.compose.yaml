@@ -1,0 +1,23 @@
+# Disposable identity fixture: no published ports, shared realms or Kubernetes access.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.7
+    command: [start-dev]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${BAIKOR_TEST_ADMIN_USERNAME:?Use disposable test credentials}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${BAIKOR_TEST_ADMIN_PASSWORD:?Use disposable test credentials}
+  test:
+    image: python:3.13-slim
+    command:
+      - sh
+      - -ec
+      - pip install --disable-pip-version-check --quiet ansible-core==2.19.3 && python /addon/scripts/test_keycloak_reconciliation.py
+    environment:
+      BAIKOR_TEST_ADMIN_USERNAME: ${BAIKOR_TEST_ADMIN_USERNAME}
+      BAIKOR_TEST_ADMIN_PASSWORD: ${BAIKOR_TEST_ADMIN_PASSWORD}
+      PYTHONDONTWRITEBYTECODE: "1"
+      ANSIBLE_LOCAL_TEMP: /tmp/ansible
+    volumes:
+      - ..:/addon:ro
+    depends_on:
+      - keycloak

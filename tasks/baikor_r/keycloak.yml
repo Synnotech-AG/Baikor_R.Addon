@@ -68,6 +68,11 @@
 - name: "Baikor_R Keycloak: Store client identifier"
   ansible.builtin.set_fact:
     baikor_keycloak_client_uuid: "{{ baikor_keycloak_clients.json[0].id }}"
+    baikor_keycloak_human_role_names:
+      - baikor_viewer
+      - baikor_editor
+      - baikor_approver
+      - baikor_admin
 
 - name: "Baikor_R Keycloak: Reconcile existing OIDC client configuration"
   ansible.builtin.uri:
@@ -96,13 +101,35 @@
     headers:
       Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
     status_code: [201, 409]
-  loop:
-    - baikor_viewer
-    - baikor_editor
-    - baikor_approver
-    - baikor_admin
+  loop: "{{ baikor_keycloak_human_role_names }}"
   loop_control:
     loop_var: baikor_role_name
+  no_log: true
+
+- name: "Baikor_R Keycloak: Read application role representations"
+  ansible.builtin.uri:
+    method: GET
+    url: "{{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name }}/clients/{{ baikor_keycloak_client_uuid }}/roles"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 200
+  register: baikor_keycloak_roles
+  no_log: true
+
+- name: "Baikor_R Keycloak: Explicitly scope browser tokens to application human roles"
+  ansible.builtin.uri:
+    method: POST
+    url: >-
+      {{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name
+      }}/clients/{{ baikor_keycloak_client_uuid }}/scope-mappings/clients/{{ baikor_keycloak_client_uuid }}
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body: "{{ baikor_keycloak_roles.json | selectattr('name', 'in', baikor_keycloak_human_role_names) | list }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 204
   no_log: true
 
 - name: "Baikor_R Keycloak: Read client secret"
@@ -153,20 +180,7 @@
   when: inv_addons.baikor_r.authentication.assign_platform_admin_roles | default(false) | bool
   no_log: true
 
-- name: "Baikor_R Keycloak: Read role representations"
-  ansible.builtin.uri:
-    method: GET
-    url: "{{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name }}/clients/{{ baikor_keycloak_client_uuid }}/roles"
-    return_content: true
-    ca_path: "{{ inv_k8s.ingress.ca_path }}"
-    headers:
-      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
-    status_code: 200
-  register: baikor_keycloak_roles
-  when: inv_addons.baikor_r.authentication.assign_platform_admin_roles | default(false) | bool
-  no_log: true
-
-- name: "Baikor_R Keycloak: Assign all roles to platform administrator"
+- name: "Baikor_R Keycloak: Assign human roles to platform administrator"
   ansible.builtin.uri:
     method: POST
     url: >-
@@ -176,7 +190,7 @@
     return_content: true
     ca_path: "{{ inv_k8s.ingress.ca_path }}"
     body_format: json
-    body: "{{ baikor_keycloak_roles.json }}"
+    body: "{{ baikor_keycloak_roles.json | selectattr('name', 'in', baikor_keycloak_human_role_names) | list }}"
     headers:
       Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
     status_code: 204

@@ -128,7 +128,8 @@ all:
 
             publication:
               # OPTIONAL: Publish sanitized Approved/Active construction sites to
-              # GeoServer. Enable only after public fields and access are approved.
+              # GeoServer. Before enabling: obtain documented business approval
+              # and a privacy review of public free text (see README).
               enable: false
 
               masterportal:
@@ -183,6 +184,9 @@ all:
             # OPTIONAL: Values recursively merged into the generated Helm values.
             # Use only documented chart values; arbitrary overrides can bypass
             # assumptions validated by the addon.
+            # aspnetCore.environment accepts Production, Staging or Development.
+            # Without an override, Core dev/local maps to Development; tst/test/
+            # staging/qa maps to Staging; other names map to Production.
             helm_values: {}
 
             database:

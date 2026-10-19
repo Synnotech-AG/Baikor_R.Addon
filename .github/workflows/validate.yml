@@ -67,7 +67,10 @@ jobs:
 
       # Explicit modules keep Docker/Kubernetes integration scripts out of discovery.
       - name: Test registry, preflight and GeoServer templates
-        run: python -m unittest -v scripts.test_image_registry scripts.test_geoserver_datastore
+        run: >-
+          python -m unittest -v scripts.test_image_registry scripts.test_geoserver_datastore
+          scripts.test_geoserver_feature_types scripts.test_helm_values
+          scripts.test_keycloak_permissions
 
       - name: Test operator ownership and Node-RED examples
         run: |
@@ -89,6 +92,31 @@ jobs:
         run: |
           docker pull "$POSTGIS_TEST_IMAGE"
           python scripts/test_database_owner.py --image "$POSTGIS_TEST_IMAGE"
+
+  keycloak-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Generate disposable identity credentials
+        shell: bash
+        run: |
+          PASSWORD="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+          echo "::add-mask::$PASSWORD"
+          echo "BAIKOR_TEST_ADMIN_USERNAME=baikor-ci-admin" >> "$GITHUB_ENV"
+          echo "BAIKOR_TEST_ADMIN_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+      - name: Test actual Keycloak provisioning and legacy editor upgrade
+        run: >-
+          docker compose --project-name baikor-keycloak-ci --file scripts/keycloak-tests.compose.yaml
+          up --abort-on-container-exit --exit-code-from test --attach test
+      - name: Remove disposable Keycloak services
+        if: always()
+        env:
+          BAIKOR_TEST_ADMIN_USERNAME: cleanup-placeholder
+          BAIKOR_TEST_ADMIN_PASSWORD: cleanup-placeholder
+        run: >-
+          docker compose --project-name baikor-keycloak-ci --file scripts/keycloak-tests.compose.yaml
+          down --volumes --remove-orphans
 
   kubernetes-tests:
     runs-on: ubuntu-24.04

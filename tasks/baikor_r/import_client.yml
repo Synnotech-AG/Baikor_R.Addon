@@ -5,6 +5,22 @@
       - inv_addons.baikor_r.imports.service_account.client_id is match('^baikor-r-[a-z0-9-]+$')
     fail_msg: "Use a dedicated baikor-r-* machine client ID, never the browser client or another application's client."
 
+- name: "Baikor_R Keycloak: Create dedicated importer role"
+  ansible.builtin.uri:
+    method: POST
+    url: "{{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name }}/clients/{{ baikor_keycloak_client_uuid }}/roles"
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body:
+      name: baikor_importer
+      description: "Baikor_R trench imports without general editing or deletion"
+      composite: false
+      clientRole: true
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: [201, 409]
+  no_log: true
+
 - name: "Baikor_R Keycloak: Create import machine client"
   ansible.builtin.uri:
     method: POST
@@ -81,9 +97,9 @@
   when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
   no_log: true
 
-- name: "Baikor_R Keycloak: Authorize import to import construction sites"
+- name: "Baikor_R Keycloak: Revoke legacy editor role from import service account"
   ansible.builtin.uri:
-    method: POST
+    method: DELETE
     url: >-
       {{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name
       }}/users/{{ baikor_import_service_account.json.id
@@ -99,9 +115,9 @@
   when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
   no_log: true
 
-- name: "Baikor_R Keycloak: Restrict import token scope to editor role"
+- name: "Baikor_R Keycloak: Revoke legacy editor scope from import machine client"
   ansible.builtin.uri:
-    method: POST
+    method: DELETE
     url: >-
       {{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name
       }}/clients/{{ baikor_import_keycloak_client_uuid
@@ -115,6 +131,50 @@
       Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
     status_code: 204
   when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
+  no_log: true
+
+- name: "Baikor_R Keycloak: Read importer role"
+  ansible.builtin.uri:
+    method: GET
+    url: "{{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name }}/clients/{{ baikor_keycloak_client_uuid }}/roles/baikor_importer"
+    return_content: true
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 200
+  register: baikor_keycloak_importer_role
+  no_log: true
+
+- name: "Baikor_R Keycloak: Authorize service account only for imports"
+  ansible.builtin.uri:
+    method: POST
+    url: >-
+      {{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name
+      }}/users/{{ baikor_import_service_account.json.id
+      }}/role-mappings/clients/{{ baikor_keycloak_client_uuid }}
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body:
+      - "{{ baikor_keycloak_importer_role.json }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 204
+  no_log: true
+
+- name: "Baikor_R Keycloak: Restrict import token scope to importer role"
+  ansible.builtin.uri:
+    method: POST
+    url: >-
+      {{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name
+      }}/clients/{{ baikor_import_keycloak_client_uuid
+      }}/scope-mappings/clients/{{ baikor_keycloak_client_uuid }}
+    ca_path: "{{ inv_k8s.ingress.ca_path }}"
+    body_format: json
+    body:
+      - "{{ baikor_keycloak_importer_role.json }}"
+    headers:
+      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
+    status_code: 204
   no_log: true
 
 - name: "Baikor_R Keycloak: Read import client secret"

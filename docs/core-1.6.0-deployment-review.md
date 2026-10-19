@@ -6,6 +6,8 @@ configures GHCR for application/chart publication and includes the C3 CI test
 coverage in the application and addon workflows. Actual hosted publication is
 still pending; these source changes do not establish a successful hosted release
 or alter the recorded local runtime evidence.
+The [current review status](REVIEW_STATUS.md) tracks the subsequent 1.7.7 fixes
+and remaining operator decisions separately from this baseline.
 
 Review date: 2026-10-16. **Status: local runtime validation passed for first
 installation, owner transition and repeat deployment. The 77 end-to-end checks

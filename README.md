@@ -5,6 +5,9 @@ existing CIVITAS/CORE platform. It uses the platform's existing Keycloak
 realm and routing. Application source code and the Helm chart are maintained in a
 separate [Baikor_R application repository](https://github.com/Synnotech-AG/Baikor_R).
 
+The [review status](docs/REVIEW_STATUS.md) records implemented findings, verification
+and the remaining operator/publication decisions.
+
 ## Features
 
 - Authenticated construction-site management with maps and attachments
@@ -25,9 +28,13 @@ separate [Baikor_R application repository](https://github.com/Synnotech-AG/Baiko
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. This addon revision pins
-application/chart **1.7.6** on GHCR. Application versions and Core versions are
+application/chart **1.7.7** on GHCR. Application versions and Core versions are
 independent. Core 1.6.0 deployment evidence is recorded in the
 [deployment review](docs/core-1.6.0-deployment-review.md).
+
+**Release status:** 1.7.7 is prepared but not yet published. Public GHCR release
+is deferred. Test this revision with a locally built matching application image
+and the local chart; do not deploy this revision with the older 1.7.6 image.
 
 ### Add the addon to CIVITAS/CORE
 
@@ -191,13 +198,49 @@ inv_addons:
         enable_gateway: true
 ```
 
+### Application environment and Helm overrides
+
+The addon maps the Core `ENVIRONMENT` value to ASP.NET's canonical names:
+
+| Core value (case-insensitive) | ASP.NET environment |
+| --- | --- |
+| `dev`, `development`, `local` | `Development` |
+| `tst`, `test`, `testing`, `stg`, `stage`, `staging`, `qa` | `Staging` |
+| Production names, empty values and unrecognized values | `Production` |
+
+Authentication remains explicitly enabled by the addon in every environment.
+Use `inv_addons.baikor_r.helm_values` for deliberate chart overrides, for example:
+
+```yaml
+inv_addons:
+    baikor_r:
+        helm_values:
+            aspnetCore:
+                environment: Staging
+            migrations:
+                resources:
+                    requests:
+                        cpu: 100m
+                        memory: 256Mi
+                    limits:
+                        cpu: 1000m
+                        memory: 512Mi
+```
+
+The chart sets requests and limits separately for the application and migration
+Job. An optional `networkPolicy` restricts application traffic when explicitly
+enabled; configure its rules for the operator's ingress, DNS, database and
+Keycloak paths. See the application's
+[Helm security guide](https://github.com/Synnotech-AG/Baikor_R/blob/main/docs/HELM_SECURITY.md)
+for defaults, examples and migration-Job coverage.
+
 ### Registries
 
 The application image and Helm chart are pinned in
 [`vars/software_references.yml`](vars/software_references.yml):
 
-- Image: `ghcr.io/synnotech-ag/baikor-r:1.7.6`.
-- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `1.7.6`.
+- Image: `ghcr.io/synnotech-ag/baikor-r:1.7.7`.
+- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `1.7.7`.
 
 Both Baikor packages are published through the application's
 [Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).
@@ -237,12 +280,24 @@ realm; access to the platform can be granted by assigning those roles to users
 
 Assign roles to the intended customer users or groups. Keep
 `authentication.assign_platform_admin_roles: false` in production.
+The browser client uses `fullScopeAllowed: false` and explicit scopes for these
+four human roles, so unrelated realm roles are not automatically included.
 
 ## Optional Geoportal Publication
 
 Publication is disabled by default. When enabled, sanitized database views expose
 only **Approved** and **Active** construction sites. Contacts, attachments and
 metadata remain private; diversion and communication text become public.
+
+Before setting `publication.enable: true`, the operator must obtain and record
+both **business approval** from the responsible data owner and a **privacy review
+of the published free-text fields**. Review representative titles, area names,
+diversion and communication text for personal data, internal information and
+content that is not approved for unrestricted public access. Removing structured
+contact fields does not anonymize text entered by users. Record the approver,
+date, reviewed scope and any required editorial rules; repeat the review when
+public fields or their intended use change. A successful technical test does
+not constitute either approval. Keep publication disabled until both are complete.
 
 GeoServer must be able to reach the Baikor_R database and trust its PostgreSQL CA.
 The operator must also approve the public workspace and WMS/WFS access rules.
@@ -306,7 +361,15 @@ inv_addons:
 ```
 
 Its credentials are stored in the `baikor-r-import-client` Secret in the application
-namespace. The client has editor privileges and must be treated accordingly.
+namespace. The client receives only `baikor_importer`: it may import construction
+sites, but cannot read the workspace or edit, approve or delete records. On an
+upgrade, the addon removes its former editor role and editor token scope before
+granting the importer role. Keep this addon revision paired with application
+1.7.7 or later; older application images do not recognize the importer role.
+Already-issued editor tokens retain their privileges until their existing expiry;
+obtain a fresh client-credentials token after the upgrade. The addon removes its
+known legacy editor grant, while other manually configured roles remain the
+operator's responsibility.
 
 After obtaining a client-credentials access token from the existing Keycloak realm,
 upload an R-KOM trench export:
@@ -322,6 +385,9 @@ The endpoint accepts an R-KOM SHP/DBF/PRJ ZIP in WGS 84 up to 25 MiB. House
 connections are skipped, and duplicate files are rejected while their imported
 records still exist.
 
+See the [OpenAPI contract and integration guide](https://github.com/Synnotech-AG/Baikor_R/blob/main/docs/openapi/README.md)
+for request fields, responses, examples and authentication details.
+
 ## Update
 
 Back up the database, pin the new addon commit or release and run the same Ansible
@@ -333,7 +399,8 @@ git -C core_platform/addons/baikor_r_addon checkout NEW_REF
 ansible-playbook -i inventory.yml core_platform/playbook.yml --tags addons
 ```
 
-Breaking inventory changes are documented in the
+Changes awaiting publication are recorded in [CHANGELOG.md](CHANGELOG.md).
+Released changes are documented in the
 [GitHub release notes](https://github.com/Synnotech-AG/Baikor_R.Addon/releases). Database backups,
 monitoring and credential rotation remain operator responsibilities.
 
@@ -342,8 +409,8 @@ monitoring and credential rotation remain operator responsibilities.
 The [Validate workflow](.github/workflows/validate.yml) runs on pushes and pull
 requests. It covers Ansible lint, registry and preflight unit tests, GeoServer
 templates, operator ownership, Node-RED examples, Npgsql connection strings,
-database-owner privileges, namespace Pod Security Admission and the real
-database bootstrap Job.
+database-owner privileges, namespace Pod Security Admission, the real database
+bootstrap Job and actual Keycloak provisioning/legacy importer upgrades.
 
 The database and Kubernetes checks create disposable PostGIS containers and a
 dedicated k3d cluster with synthetic credentials. They do not need an operator's

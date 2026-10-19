@@ -23,7 +23,7 @@
     "post.logout.redirect.uris": "https://{{ inv_addons.baikor_r.subdomain | default('baikor-r') }}.{{ INGRESS_DOMAIN | default(DOMAIN) }}/*",
     "backchannel.logout.session.required": "true"
   },
-  "fullScopeAllowed": true,
+  "fullScopeAllowed": false,
   "protocolMappers": [
     {
       "name": "Baikor client roles",

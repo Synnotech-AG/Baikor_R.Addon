@@ -16,8 +16,10 @@ imagePullSecrets:
 imagePullSecrets: []
 {% endif %}
 
+{% set core_environment = ENVIRONMENT | default('') | string | trim | lower %}
+{% set aspnet_environment = 'Development' if core_environment in ['dev', 'development', 'local'] else 'Staging' if core_environment in ['tst', 'test', 'testing', 'stg', 'stage', 'staging', 'qa'] else 'Production' %}
 aspnetCore:
-  environment: "{{ ENVIRONMENT | default('Production') }}"
+  environment: {{ aspnet_environment | to_json }}
 
 authentication:
   caConfigMap: "{{ 'baikor-r-platform-ca' if inv_k8s.ingress.ca_path | default('') | length > 0 else '' }}"
