@@ -79,7 +79,9 @@
     kind: Job
     name: baikor-r-database-bootstrap
   register: baikor_database_bootstrap_job
-  until: baikor_database_bootstrap_job.resources[0].status.succeeded | default(0) | int == 1
+  until: >-
+    baikor_database_bootstrap_job.resources[0].status.succeeded | default(0) | int == 1
+    or baikor_database_bootstrap_job.resources[0].status.failed | default(0) | int > 0
   failed_when: baikor_database_bootstrap_job.resources[0].status.failed | default(0) | int > 0
   retries: 90
   delay: 2

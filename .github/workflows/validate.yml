@@ -70,7 +70,7 @@ jobs:
         run: >-
           python -m unittest -v scripts.test_image_registry scripts.test_geoserver_datastore
           scripts.test_geoserver_feature_types scripts.test_helm_values
-          scripts.test_keycloak_permissions
+          scripts.test_keycloak_permissions scripts.test_database_bootstrap_wait
 
       - name: Test operator ownership and Node-RED examples
         run: |

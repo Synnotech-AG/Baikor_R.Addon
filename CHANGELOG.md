@@ -14,6 +14,8 @@ Released revisions are listed in
 - Document business approval and privacy review before enabling publication.
 - Add regression checks for Keycloak reconciliation, environment mapping and
   GeoServer feature-type updates to CI.
+- Stop the database bootstrap wait when its Job fails, and report that failure
+  immediately instead of exhausting the successful-completion retry budget.
 
 Public package publication is deferred. The importer change requires the matching
 application; do not combine this revision with a 1.7.6 application image.
