@@ -44,7 +44,7 @@ jobs:
             --workdir /core \
             "$ANSIBLE_DEV_TOOLS_IMAGE" \
             sh -lc '
-              ansible-galaxy collection install -r ansible-collections.yml &&
+              ansible-galaxy collection install --no-cache -r ansible-collections.yml &&
               ansible-lint --offline core_platform/addons/baikor_r_addon
             '
 
