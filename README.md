@@ -32,9 +32,14 @@ application/chart **1.7.7** on GHCR. Application versions and Core versions are
 independent. Core 1.6.0 deployment evidence is recorded in the
 [deployment review](docs/core-1.6.0-deployment-review.md).
 
-**Release status:** 1.7.7 is prepared but not yet published. Public GHCR release
-is deferred. Test this revision with a locally built matching application image
-and the local chart; do not deploy this revision with the older 1.7.6 image.
+**Release status:** The 1.7.7 image and chart are published as private GHCR
+packages; public availability and a completed GitHub release remain pending.
+Authenticated Actions downloaded the exact published packages; their checked
+bundle passed deployment and cold-restart tests; the normal local deployment
+was then restored. This is indirect registry verification, not proof of direct
+local or anonymous GHCR access. Do not deploy this revision with the older 1.7.6
+image. See the
+[runtime review](docs/runtime-review-2026-10-19.md) for current evidence.
 
 ### Add the addon to CIVITAS/CORE
 
