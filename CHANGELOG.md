@@ -3,7 +3,7 @@
 Released revisions are listed in
 [GitHub Releases](https://github.com/Synnotech-AG/Baikor_R.Addon/releases).
 
-## Unreleased — requires application/chart 1.7.7
+## 1.7.8 — 2026-10-20
 
 - Scope the browser client's tokens explicitly to the four human Baikor roles.
 - Give the optional import service account its own `baikor_importer` role and
@@ -16,9 +16,12 @@ Released revisions are listed in
   GeoServer feature-type updates to CI.
 - Stop the database bootstrap wait when its Job fails, and report that failure
   immediately instead of exhausting the successful-completion retry budget.
+- Record public source and package availability, verified with anonymous Docker
+  and Helm downloads on 2026-10-20, and the decision to keep MDH on Core 1.6.
 
-Public package publication is deferred. The importer change requires the matching
-application; do not combine this revision with a 1.7.6 application image.
+The importer change requires application/chart 1.7.7; do not combine this revision
+with a 1.7.6 application image. Addon release numbers are independent of application
+versions. The existing addon 1.7.7 tag is an older revision and remains unchanged.
 
 ## Deployment and CI review — 2026-10-19
 

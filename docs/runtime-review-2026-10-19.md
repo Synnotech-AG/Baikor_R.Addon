@@ -1,5 +1,13 @@
 # Runtime review — 2026-10-19
 
+**Follow-up, 2026-10-20:** Both source repositories and the 1.7.7 image/chart
+packages are now public. Anonymous Docker and Helm downloads were verified,
+resolving the package-visibility blocker recorded below. See the
+[current review status](REVIEW_STATUS.md) for GitHub release completion and the
+new public-release deployment test. This report preserves the October 19
+authenticated-bundle and local-image results; they are not relabeled as direct
+anonymous deployment tests.
+
 The matching 1.7.7 application/addon sources have been exercised on the existing
 patched Core 1.6.0 test deployment, including repeat owner deployment,
 `Production` and enabled application NetworkPolicy. This is a local runtime

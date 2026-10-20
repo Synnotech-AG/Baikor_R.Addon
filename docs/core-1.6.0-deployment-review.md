@@ -1,5 +1,13 @@
 # Core 1.6.0 deployment review
 
+**Follow-up, 2026-10-20:** Both source repositories and the 1.7.7 image/chart
+packages are now public; anonymous Docker and Helm downloads were verified.
+MDH remains on Core 1.6 with `enable_gateway: false`. The requested local
+compatibility test is complete, with the platform deviations below retained as
+its evidence boundary. See the [current review status](REVIEW_STATUS.md) for
+release completion and later acceptance tests. The dated findings below describe
+their original test state and are not the current release checklist.
+
 **Follow-up, 2026-10-19:** The October 16 baseline evidence and findings below are
 historical. The application source is now public under EUPL-1.2. Current source
 configures GHCR for application/chart publication and includes the C3 CI test

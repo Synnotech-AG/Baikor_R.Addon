@@ -1,43 +1,65 @@
 # Review findings status
 
-Status: 2026-10-19. The shared patched Core 1.6.0 deployment has been upgraded
-with the matching **1.7.7** application and addon sources and tested with
-`Production` and the application NetworkPolicy enabled. The
-[runtime review](runtime-review-2026-10-19.md) records the actual tests, two
-runtime findings and their fixes, preservation checks and evidence locations.
-The exact published 1.7.7 image and chart were retrieved through an authenticated
-Actions bundle. Their deployment and cold restart each passed **77 human + 70
-import checks** under Production with NetworkPolicy enabled. The helper waited
-through a recurring k3d worker-IP race; it does not eliminate that infrastructure
-issue. This is indirect registry verification; direct local GHCR access remains
-unverified.
+Status: **2026-10-20**. Both source repositories and both GHCR packages are
+public. Anonymous Docker and Helm downloads of application/chart **1.7.7**
+succeeded using empty credential configurations. The original application
+release workflow completed on its second attempt without rebuilding the
+published packages; [GitHub release 1.7.7](https://github.com/Synnotech-AG/Baikor_R/releases/tag/1.7.7)
+contains the chart, checksums and source-revision metadata.
 
-The normal local helper then restored image `baikor-r:review-1.7.7-6afbbae`,
-Staging and disabled optional NetworkPolicy without command-line overrides.
-All three nodes and 36 active Pods are ready. Existing browser access, original
-data, credentials, PVCs and public WFS/WMS behavior are preserved, and final
-authentication/network/runtime checks pass. Public package availability and a
-completed GitHub release remain open under the organization package policy.
+The compatible addon release being prepared is **1.7.8**; it retains the
+application/chart **1.7.7** pins. The historical addon `1.7.7` tag identifies
+older code and will not be moved. The new reset and direct public-release
+deployment test is pending; the earlier bundle test is not substituted for it.
+
+MDH remains on **Core 1.6**, with `enable_gateway: false`. The requested local
+compatibility test is complete. Its [documented platform deviations](core-1.6.0-deployment-review.md)
+remain part of the evidence; no exact MDH or untouched Core 1.6 result is claimed.
+Actual MDH database connection details are deployment inputs, not an outstanding
+addon implementation finding.
+
+The [October 19 runtime review](runtime-review-2026-10-19.md) records the completed
+local and authenticated-bundle tests, fixes and preservation checks. Those
+phases include repeat deployment, Production/NetworkPolicy, cold restart,
+**77 human + 70 import checks** per full run and restoration of the local-image
+profile. The recurring local k3d worker-IP race remains an infrastructure
+follow-up; successful recovery does not establish a fix for that race.
 
 ## Findings
 
 | Finding | Status and evidence | Remaining step |
 | --- | --- | --- |
 | A1 — Non-root operation and namespace PSA | Actual app/migration/bootstrap runtime credentials, capability masks, seccomp, read-only root filesystem and cgroup limits verified. PSA rejects root and privileged Pods; permitted temporary/PVC writes succeed and are cleaned. | Operator must keep Core PSA enabled. |
-| A2 — MDH database and owner operation | Shared owner upgrades preserve data, grants, roles and PVCs. Fresh bootstrap, two owner-only repeats, wrong-CA/privileged-publisher rejection and recovery passed using actual addon tasks. Terminal Job failures now stop polling promptly; four regression tests cover the fix. | Operator supplies the actual PostgreSQL server, CA and credentials. Exact MDH deployment remains untested. |
-| B1 — Public source and license | Application source is public on GitHub under EUPL-1.2. | Public image/chart access remains pending GitHub organization package policy. |
-| B2 — Core 1.6 compatibility | Local patched Core 1.6.0 with `enable_gateway: false` passed deployment and Geoportal tests; deviations are recorded in the deployment review. | Agree with MDH whether its existing 1.6 setup is sufficient or update to 1.7.2. Exact MDH/unmodified 1.6 compatibility is not established. No separate 1.6 branch. |
+| A2 — MDH database and owner operation | Complete on the addon side. Shared owner upgrades preserve data, grants, roles and PVCs. Fresh bootstrap, two owner-only repeats, wrong-CA/privileged-publisher rejection and recovery passed using actual addon tasks. Bootstrap privileges, owner-login operation and freely selectable credential namespace are documented. | MDH supplies its PostgreSQL address, CA and initial provisioning credentials as deployment inputs. No change to automatic database creation is required. |
+| B1 — Public source and license | Both source repositories are public under EUPL-1.2. Image and chart 1.7.7 can be downloaded anonymously. | None. |
+| B2 — Core 1.6 compatibility | Complete for the requested local test: Core 1.6.0 with `enable_gateway: false` passed deployment and Geoportal tests. MDH remains on 1.6. The report retains the local Keycloak/image adjustments and test boundaries. | No 1.7.2 upgrade or separate 1.6 branch is required for this review decision. |
 | B3 — Resources and NetworkPolicy | Actual cgroup limits verified. Six functional probes passed with policy off, on, after repeat deployment and after restoration to off; real forbidden traffic is rejected and CNI counters increment. Migration succeeds with the existing policy present. | Operator chooses resource sizing and network rules. Migration hooks need an operator policy if they must also be isolated. |
-| C1 — Releases/changelog | Both repositories have changelogs; README release links are corrected. Release run `39239993018` published 1.7.7, then failed anonymous verification with 401. Bundle run `39241636968` retrieved those exact digests; deployment/cold restart passed and the normal local profile is restored. | Direct local/anonymous GHCR access and completed GitHub release remain open. The package runtime test used indirect registry retrieval. |
+| C1 — Releases/changelog | Both repositories have changelogs and corrected release links. Application run `39239993018`, attempt 2, passed anonymous verification and created GitHub release 1.7.7 with the original source/digests. | Publish addon 1.7.8 after its documentation commit and CI; repeat runtime acceptance through the direct public download path. |
 | C2 — Import OpenAPI | Actual imports match success, validation and duplicate examples. Real file/buffer boundaries and cookie CSRF checked. Found and fixed the ingress size mismatch; guide now distinguishes importer 400, host form-binding 400 and proxy 413. | Operators using other ingress controllers must configure equivalent request limits. |
 | C3 — Tests in CI | Latest isolated Keycloak/PostGIS/Kestrel run passed 77 human and 24 machine checks. New tests cover exact 25 MiB, 25 MiB plus one byte and the complete-request cap. Addon waiter regressions pass in 44 selected unit checks. | One initial isolated startup timeout is retained as an unconfirmed, unreproduced failure; see runtime report. Inspect hosted workflow results for the selected revision. |
 | C4 — Browser scopes | Actual upgrade changed browser full scope from true to false and added exactly four explicit human-role scopes. All 77 real OIDC/session/API checks pass; existing operator access remains 200. | None in the tested local configuration. |
 | C5 — ASP.NET environment | Core names map to Development, Staging or Production; unknown values default to Production. Actual repeat deployment reports Production with authentication enabled and invalid-certificate bypass disabled. | Explicit Helm overrides remain the operator's responsibility. |
-| C6 — Import-only role | Existing machine account had an editor assignment, scope and token before upgrade. All three now contain only `baikor_importer`; valid imports work and nine general API operations return 403. | Deploy matching app/addon 1.7.7+ together and obtain a fresh token. Existing tokens keep their old privileges until expiry. |
+| C6 — Import-only role | Existing machine account had an editor assignment, scope and token before upgrade. All three now contain only `baikor_importer`; valid imports work and nine general API operations return 403. | Deploy addon 1.7.8 with application/chart 1.7.7 and obtain a fresh token. Existing tokens keep their old privileges until expiry. |
 | C7 — Publication approval | README and inventory explicitly require recorded business approval and privacy review of public free text before enabling publication. | Actual approvals belong to the responsible data owner/operator and are not supplied by technical tests. |
 | C8 — Task/update/CI details | Actual addon deployment restores deliberate managed FeatureType title/abstract drift; live publication lifecycle passed 211 checks. Datastore task and Core CI path corrections remain covered. | GeoServer may normalize previously absent flags; byte-identical FeatureType JSON is not promised. |
 
-## Current verification
+## Public distribution verification — 2026-10-20
+
+- [Application source](https://github.com/Synnotech-AG/Baikor_R) and
+  [addon source](https://github.com/Synnotech-AG/Baikor_R.Addon) are public.
+- Anonymous Docker pull of `ghcr.io/synnotech-ag/baikor-r:1.7.7` and Helm download
+  of `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `1.7.7`, succeeded with
+  empty credential configurations.
+- Immutable image digest:
+  `sha256:6e9f2824b4774496783b96d6e8ef5ccfb00006c8afaa71280d2d8b3079d1a0be`.
+- Immutable chart manifest digest:
+  `sha256:f1ffdc39cec1ea63e6d6d2fb680a180fd3acf7b5646ba7d2147701ad5b73f691`.
+- Application [release run 39239993018](https://github.com/Synnotech-AG/Baikor_R/actions/runs/39239993018),
+  attempt 2, completed from source `6afbbaed75f4c201c584d88eaee1e196b15a2720`.
+  Anonymous release-asset checks matched `SHA256SUMS`; chart archive SHA256 is
+  `c5eff82e139ba92e4ad916b181bc174238fd2d59a04c4b4f6517129ec3b4324f`.
+
+## Earlier runtime verification — 2026-10-19
 
 - Shared Core, policy off: **77 human checks**, then **70 import/auth checks
   after the ingress fix**, zero failures. Policy on with Production: **77 + 70**,
@@ -81,7 +103,7 @@ GitHub release.
 The [historical Core deployment evidence](core-1.6.0-deployment-review.md) and
 [Geoportal test](core-1.6.0-geoportal-test.md) describe the October 16 baseline.
 Use the [October 19 runtime report](runtime-review-2026-10-19.md) for the upgraded
-image, current authorization, database, ingress and network checks.
+image, authorization, database, ingress and network checks in that test phase.
 
 GitNexus impact/change analysis was used alongside direct source review. The
 available indices are stale and do not resolve several newer Python/report

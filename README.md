@@ -31,15 +31,17 @@ does not install a database server in production. This addon revision pins
 application/chart **1.7.7** on GHCR. Application versions and Core versions are
 independent. Core 1.6.0 deployment evidence is recorded in the
 [deployment review](docs/core-1.6.0-deployment-review.md).
+MDH remains on Core 1.6 with `enable_gateway: false`; the requested local
+compatibility test is complete. The report records the local platform adjustments
+and test boundaries; a separate 1.6 branch is not required.
 
-**Release status:** The 1.7.7 image and chart are published as private GHCR
-packages; public availability and a completed GitHub release remain pending.
-Authenticated Actions downloaded the exact published packages; their checked
-bundle passed deployment and cold-restart tests; the normal local deployment
-was then restored. This is indirect registry verification, not proof of direct
-local or anonymous GHCR access. Do not deploy this revision with the older 1.7.6
-image. See the
-[runtime review](docs/runtime-review-2026-10-19.md) for current evidence.
+**Release pairing:** Addon **1.7.8** uses application/chart **1.7.7**. Both source
+repositories and both GHCR packages are public. Anonymous Docker and Helm
+downloads were verified on **2026-10-20**. Do not deploy this revision with the
+older 1.7.6 application image or confuse it with the historical addon `1.7.7` tag.
+The [review status](docs/REVIEW_STATUS.md) records GitHub release completion and
+runtime acceptance. The [October 19 runtime review](docs/runtime-review-2026-10-19.md)
+preserves the earlier authenticated-bundle deployment and cold-restart evidence.
 
 ### Add the addon to CIVITAS/CORE
 
@@ -249,6 +251,8 @@ The application image and Helm chart are pinned in
 
 Both Baikor packages are published through the application's
 [Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).
+The existing packages are public, including future versions published under
+these package names; no registry login is required to download them.
 The workflow verifies downloads without registry credentials before creating
 the release. Operators must permit GHCR downloads or mirror the artifacts.
 The PostgreSQL bootstrap client remains a separately pinned Docker Hub image.
