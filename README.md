@@ -40,7 +40,9 @@ repositories and both GHCR packages are public. Anonymous Docker and Helm
 downloads were verified on **2026-10-20**. Do not deploy this revision with the
 older 1.7.6 application image or confuse it with the historical addon `1.7.7` tag.
 The [review status](docs/REVIEW_STATUS.md) records GitHub release completion and
-runtime acceptance. The [October 19 runtime review](docs/runtime-review-2026-10-19.md)
+runtime acceptance. The [October 20 runtime review](docs/runtime-review-2026-10-20.md)
+records the direct public-release deployment, cold resets and final local-profile
+restoration. The [October 19 runtime review](docs/runtime-review-2026-10-19.md)
 preserves the earlier authenticated-bundle deployment and cold-restart evidence.
 
 ### Add the addon to CIVITAS/CORE

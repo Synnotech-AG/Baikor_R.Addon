@@ -7,10 +7,22 @@ release workflow completed on its second attempt without rebuilding the
 published packages; [GitHub release 1.7.7](https://github.com/Synnotech-AG/Baikor_R/releases/tag/1.7.7)
 contains the chart, checksums and source-revision metadata.
 
-The compatible addon release being prepared is **1.7.8**; it retains the
-application/chart **1.7.7** pins. The historical addon `1.7.7` tag identifies
-older code and will not be moved. The new reset and direct public-release
-deployment test is pending; the earlier bundle test is not substituted for it.
+The compatible [addon release **1.7.8**](https://github.com/Synnotech-AG/Baikor_R.Addon/releases/tag/1.7.8)
+is public and pins application/chart **1.7.7**. Its tag identifies commit
+`050ce2ea7c0856395bb02cfed50007ac9cd182d0`; all four addon CI jobs passed for that
+revision before publication. The historical addon `1.7.7` tag remains unchanged.
+The [new reset and direct public-release deployment test](runtime-review-2026-10-20.md)
+has passed its initial phase: **77 human + 70 import + 211 publication checks**,
+55 runtime assertions, six network checks and six isolated database phases.
+The owner repeat repaired both managed FeatureTypes, and a real Helm upgrade
+passed with the existing NetworkPolicy present. The second cold restart passed
+the full human/import suites again and preserved original data/credentials.
+Test-induced login throttling during cleanup and one transient browser search
+timeout remain documented. The normal local-image/profile has been restored:
+Helm revision 20, local chart/image, Staging and optional NetworkPolicy off.
+Final **40 runtime + six network + seven targeted auth checks** and all ten
+preservation comparisons passed. These are new tests of the public release;
+the earlier bundle test is not substituted for them.
 
 MDH remains on **Core 1.6**, with `enable_gateway: false`. The requested local
 compatibility test is complete. Its [documented platform deviations](core-1.6.0-deployment-review.md)
@@ -34,7 +46,7 @@ follow-up; successful recovery does not establish a fix for that race.
 | B1 — Public source and license | Both source repositories are public under EUPL-1.2. Image and chart 1.7.7 can be downloaded anonymously. | None. |
 | B2 — Core 1.6 compatibility | Complete for the requested local test: Core 1.6.0 with `enable_gateway: false` passed deployment and Geoportal tests. MDH remains on 1.6. The report retains the local Keycloak/image adjustments and test boundaries. | No 1.7.2 upgrade or separate 1.6 branch is required for this review decision. |
 | B3 — Resources and NetworkPolicy | Actual cgroup limits verified. Six functional probes passed with policy off, on, after repeat deployment and after restoration to off; real forbidden traffic is rejected and CNI counters increment. Migration succeeds with the existing policy present. | Operator chooses resource sizing and network rules. Migration hooks need an operator policy if they must also be isolated. |
-| C1 — Releases/changelog | Both repositories have changelogs and corrected release links. Application run `39239993018`, attempt 2, passed anonymous verification and created GitHub release 1.7.7 with the original source/digests. | Publish addon 1.7.8 after its documentation commit and CI; repeat runtime acceptance through the direct public download path. |
+| C1 — Releases/changelog | Complete. Public GitHub releases exist for application 1.7.7 and addon 1.7.8, with changelogs and corrected README links. Application run `39239993018`, attempt 2, passed anonymous verification using the original source/digests. Addon release revision `050ce2e` passed all four CI jobs. The direct public-release runtime retest and local-profile restoration are complete. | None. |
 | C2 — Import OpenAPI | Actual imports match success, validation and duplicate examples. Real file/buffer boundaries and cookie CSRF checked. Found and fixed the ingress size mismatch; guide now distinguishes importer 400, host form-binding 400 and proxy 413. | Operators using other ingress controllers must configure equivalent request limits. |
 | C3 — Tests in CI | Latest isolated Keycloak/PostGIS/Kestrel run passed 77 human and 24 machine checks. New tests cover exact 25 MiB, 25 MiB plus one byte and the complete-request cap. Addon waiter regressions pass in 44 selected unit checks. | One initial isolated startup timeout is retained as an unconfirmed, unreproduced failure; see runtime report. Inspect hosted workflow results for the selected revision. |
 | C4 — Browser scopes | Actual upgrade changed browser full scope from true to false and added exactly four explicit human-role scopes. All 77 real OIDC/session/API checks pass; existing operator access remains 200. | None in the tested local configuration. |
@@ -58,6 +70,46 @@ follow-up; successful recovery does not establish a fix for that race.
   attempt 2, completed from source `6afbbaed75f4c201c584d88eaee1e196b15a2720`.
   Anonymous release-asset checks matched `SHA256SUMS`; chart archive SHA256 is
   `c5eff82e139ba92e4ad916b181bc174238fd2d59a04c4b4f6517129ec3b4324f`.
+- Addon [release 1.7.8](https://github.com/Synnotech-AG/Baikor_R.Addon/releases/tag/1.7.8)
+  and its tag were verified through anonymous GitHub API requests. The tag
+  resolves to `050ce2ea7c0856395bb02cfed50007ac9cd182d0`.
+- Addon [Validate run 39390324015](https://github.com/Synnotech-AG/Baikor_R.Addon/actions/runs/39390324015)
+  passed all four jobs at the released revision. Application documentation
+  commit `02ff660` passed all five [CI jobs in run 39390303227](https://github.com/Synnotech-AG/Baikor_R/actions/runs/39390303227);
+  it does not change the immutable 1.7.7 package source revision.
+
+## Direct public-release runtime verification — 2026-10-20
+
+The [new runtime report](runtime-review-2026-10-20.md) records the initial cold
+reset, successful public OCI/image deployment at Helm revision 18, released
+artifact identity checks, real browser/Geoportal behavior and database
+preservation. Authentication/import/publication checks passed **77 + 70 + 211**;
+all **55 runtime assertions**, **six network probes**, **six isolated bootstrap
+phases** and **10 preservation comparisons** passed. Two controller invocation
+corrections are documented separately from application behavior. The unchanged
+owner repeat passed **55 runtime + six network checks** and repaired deliberate
+FeatureType drift; ten preservation comparisons passed again. A separate actual
+Helm upgrade to revision 19 passed **55 runtime checks** and all three
+existing-policy/migration assertions. An incorrect harness assumption about
+unchanged deployments recreating migration Jobs is documented explicitly.
+The public cold restart reached readiness in **137.1 seconds**, with no
+redeployment or role repair before the checks. **77 human + 70 import checks**,
+34 live-runtime assertions, six network probes, 14 operator-session continuity
+checks and ten preservation comparisons passed. A retained 65,536-byte
+attachment and its session passed 14 checks; its cleanup then failed to decode
+one response. A separate cleanup passed all 11 ownership checks. The original
+failure is retained; matching Keycloak/ingress evidence supports throttling from
+overlapping test-helper logins, with no role or security-policy change. A rendered
+Geoportal search timeout followed by a successful retry remains unexplained;
+a second known site's controlled search passed on its first attempt.
+The normal owner deployment then restored local image
+`baikor-r:review-1.7.7-6afbbae`, local chart, Staging and optional NetworkPolicy
+off at Helm revision 20. Final **40 runtime**, **six network**, **seven targeted
+auth** and **ten preservation** checks passed; all 36 active Pods are Ready.
+Original inventories, credentials, data and PVC identities remain unchanged.
+The existing browser session still shows the original three sites with Create
+enabled. All owned test fixtures were removed. The restart evidence concerns
+local k3d cluster stops/starts, not a Windows host reboot.
 
 ## Earlier runtime verification — 2026-10-19
 
