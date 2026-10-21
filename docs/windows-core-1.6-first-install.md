@@ -12,15 +12,15 @@ innerhalb von Baikor_R funktioniert davon unabhängig.
 
 Stand: 21. Oktober 2026. Die Anleitung verwendet bewusst feste Versionen:
 
-Diese Fassung verwendet das Add-on `1.7.9` und die öffentlichen
-App-/Chart-Pakete `1.7.8`.
+Diese Fassung verwendet das Add-on `1.7.10` und die öffentlichen
+App-/Chart-Pakete `1.7.9`.
 
 | Bestandteil | Stand |
 | --- | --- |
 | CIVITAS/CORE | `v1.6.0`, plus die unten beschriebenen lokalen Anpassungen |
-| Add-on | Release-Tag `1.7.9` |
-| Öffentliches Baikor_R-Image | `ghcr.io/synnotech-ag/baikor-r:1.7.8` |
-| Öffentliches Helm-Chart | `oci://ghcr.io/synnotech-ag/baikor-r-chart`, Version `1.7.8` |
+| Add-on | Release-Tag `1.7.10` |
+| Öffentliches Baikor_R-Image | `ghcr.io/synnotech-ag/baikor-r:1.7.9` |
+| Öffentliches Helm-Chart | `oci://ghcr.io/synnotech-ag/baikor-r-chart`, Version `1.7.9` |
 | k3d / Kubernetes | `5.9.0` / `v1.35.4-k3s1` |
 | Helm / kubectl | `3.20.0` / `1.35.4` |
 
@@ -175,7 +175,7 @@ git rev-parse HEAD
 git submodule add https://github.com/Synnotech-AG/Baikor_R.Addon.git \
   core_platform/addons/baikor_r_addon
 git -C core_platform/addons/baikor_r_addon checkout --detach \
-  1.7.9
+  1.7.10
 git -C core_platform/addons/baikor_r_addon describe --tags --exact-match
 
 python3 -m venv "$LAB/.venv"
@@ -186,7 +186,7 @@ ansible-galaxy collection install -r ansible-collections.yml
 ```
 
 Der Core-Commit muss `86e69334800ce96bb2731782d2c1a9de9c5a9e91` sein,
-der Add-on-Tag muss `1.7.9` lauten.
+der Add-on-Tag muss `1.7.10` lauten.
 Core selbst liegt weiterhin bei seinem Anbieter auf GitLab; Baikor_R und das
 Add-on liegen auf GitHub.
 
@@ -553,15 +553,15 @@ Schritt 15 ersetzt diesen privilegierten Zugang für weitere Add-on-Deployments.
 **Ubuntu:**
 
 ```bash
-docker pull ghcr.io/synnotech-ag/baikor-r:1.7.8
-helm show chart oci://ghcr.io/synnotech-ag/baikor-r-chart --version 1.7.8
-helm pull oci://ghcr.io/synnotech-ag/baikor-r-chart --version 1.7.8 \
+docker pull ghcr.io/synnotech-ag/baikor-r:1.7.9
+helm show chart oci://ghcr.io/synnotech-ag/baikor-r-chart --version 1.7.9
+helm pull oci://ghcr.io/synnotech-ag/baikor-r-chart --version 1.7.9 \
   --destination "$LAB/downloads"
 ```
 
 Alle drei Befehle müssen erfolgreich sein. In der Chart-Ausgabe müssen `version`
-und `appVersion` jeweils `1.7.8` lauten; das Chart liegt anschließend als
-`$LAB/downloads/baikor-r-chart-1.7.8.tgz` vor. Beide Pakete müssen ohne
+und `appVersion` jeweils `1.7.9` lauten; das Chart liegt anschließend als
+`$LAB/downloads/baikor-r-chart-1.7.9.tgz` vor. Beide Pakete müssen ohne
 Registry-Login abrufbar sein. Bei einem Fehler hier anhalten und die
 Veröffentlichung sowie den GHCR-Zugriff prüfen.
 
@@ -643,7 +643,7 @@ einem vollständigen Core-Lauf müssen die Core-Komponenten für `restricted`
 vorbereitet oder die Einstellung für diesen Basislauf wieder auf `false`
 gesetzt werden. Die bereits vorhandenen Add-on-Namespace-Labels bleiben erhalten.
 
-Die Add-on-Pins wählen App und Chart `1.7.8`. Durch `inherit_core: false` werden
+Die Add-on-Pins wählen App und Chart `1.7.9`. Durch `inherit_core: false` werden
 die öffentlichen Paketquellen direkt verwendet. Ein Image-Override in
 `helm_values` ist für diese Installation nicht erforderlich.
 
@@ -811,7 +811,7 @@ gehören nicht zum normalen Start/Stopp. Diese lokale Umgebung ersetzt kein Back
 | Installation scheitert beim Port-Binding | Läuft bereits ein Dienst oder Cluster auf einem der Ports aus Schritt 1? |
 | Zertifikatsfehler im Browser | Schritt 8 im selben Windows-Benutzer ausgeführt und Browser neu gestartet? |
 | Zertifikatsfehler in Ansible | `source ~/baikor-lab/env.sh`, CA-Pfad in Inventory und Zertifikate aus Schritt 8 prüfen. |
-| `ErrImagePull` / `ImagePullBackOff` | Öffentlichen Abruf aus Schritt 12, GHCR-Zugriff der Kubernetes-Nodes und Image-Tag `1.7.8` prüfen. |
+| `ErrImagePull` / `ImagePullBackOff` | Öffentlichen Abruf aus Schritt 12, GHCR-Zugriff der Kubernetes-Nodes und Image-Tag `1.7.9` prüfen. |
 | `Kein Zugriff` nach Anmeldung | In Keycloak Realm `tst` wählen, Benutzer öffnen, unter Role mapping die Client-Rolle `baikor-r / baikor_admin` prüfen. Danach abmelden und neu anmelden. |
 | `Pending` / `CrashLoopBackOff` | Ressourcen, PVCs und Events prüfen; nicht die Datenbank oder Secrets neu anlegen. |
 | Deployment bleibt bei Bootstrap/Migration stehen | Den fehlgeschlagenen Job und seine Events prüfen. Erst Ursache beheben, dann denselben Add-on-Lauf wiederholen. |
@@ -842,4 +842,4 @@ Betreiberaufgaben nicht. Die vorliegende Anleitung schließt diesen zusätzliche
 Integrationsschritt ausdrücklich nicht ein.
 
 Für den produktiven Betrieb gelten außerdem die Betreiberangaben im
-[Add-on-README](https://github.com/Synnotech-AG/Baikor_R.Addon/blob/1.7.9/README.md).
+[Add-on-README](https://github.com/Synnotech-AG/Baikor_R.Addon/blob/1.7.10/README.md).

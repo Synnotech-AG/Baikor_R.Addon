@@ -35,12 +35,12 @@ and the remaining operator/publication decisions.
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. This addon revision pins
-application/chart **1.7.8** on GHCR. Application versions and Core versions are
+application/chart **1.7.9** on GHCR. Application versions and Core versions are
 independent. Core 1.6.0 deployment evidence is recorded in the
 [deployment review](docs/core-1.6.0-deployment-review.md), including the local
 platform adjustments and test boundaries.
 
-**Release pairing:** Addon **1.7.9** uses application/chart **1.7.8**.
+**Release pairing:** Addon **1.7.10** uses application/chart **1.7.9**.
 Both source repositories and both GHCR packages are public. Use the application and
 chart versions pinned by your selected addon release. Application 1.7.6 does not
 support this revision's importer role. Earlier published-release verification
@@ -256,8 +256,8 @@ for defaults, examples and migration-Job coverage.
 The application image and Helm chart are pinned in
 [`vars/software_references.yml`](vars/software_references.yml):
 
-- Image: `ghcr.io/synnotech-ag/baikor-r:1.7.8`.
-- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `1.7.8`.
+- Image: `ghcr.io/synnotech-ag/baikor-r:1.7.9`.
+- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `1.7.9`.
 
 Both Baikor packages are published through the application's
 [Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).

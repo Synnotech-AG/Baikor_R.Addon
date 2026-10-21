@@ -5,6 +5,11 @@ Released revisions are listed in
 
 ## Unreleased
 
+## 1.7.10 — 2026-10-21
+
+- Pin application/chart 1.7.9 and align the Windows / Core 1.6 first-install
+  guide and registry examples with the addon 1.7.10 release pairing.
+
 ## 1.7.9 — 2026-10-21
 
 - Pin application/chart 1.7.8 for public GHCR installation.

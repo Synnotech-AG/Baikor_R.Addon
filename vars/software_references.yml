@@ -22,7 +22,7 @@ software:
     baikor_r:
       helm_release_name: baikor-r
       helm_chart_reference: oci://ghcr.io/synnotech-ag/baikor-r-chart
-      helm_chart_version: 1.7.8
+      helm_chart_version: 1.7.9
       registry: ghcr.io
       repository: synnotech-ag/baikor-r
-      tag: 1.7.8
+      tag: 1.7.9
