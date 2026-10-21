@@ -5,6 +5,13 @@ Released revisions are listed in
 
 ## Unreleased
 
+## 0.2.0 — 2026-10-21
+
+- Restart release numbering at 0.2.0 for the addon, application image and Helm
+  chart, superseding the previous 1.7.x package line.
+- Pin application/chart 0.2.0 and align the README and Windows / Core 1.6
+  first-install guide. Preserve earlier release evidence as historical records.
+
 ## 1.7.10 — 2026-10-21
 
 - Pin application/chart 1.7.9 and align the Windows / Core 1.6 first-install

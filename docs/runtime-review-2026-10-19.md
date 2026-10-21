@@ -1,5 +1,11 @@
 # Runtime review — 2026-10-19
 
+> **Historical test record.** Versions and download results below apply to the
+> stated test date. The 0.2.0 release line supersedes earlier 1.7.x packages;
+> use the [current README](../README.md) for installation and package selection.
+> This record does not establish 0.2.0 release acceptance or current availability
+> of the earlier packages.
+
 **Follow-up, 2026-10-20:** Both source repositories and the 1.7.7 image/chart
 packages are now public. Anonymous Docker and Helm downloads were verified,
 resolving the package-visibility blocker recorded below. See the

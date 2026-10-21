@@ -1,5 +1,11 @@
 # Public-release runtime review — 2026-10-20
 
+> **Historical test record.** Versions and download results below apply to the
+> stated test date. The 0.2.0 release line supersedes earlier 1.7.x packages;
+> use the [current README](../README.md) for installation and package selection.
+> This record does not establish 0.2.0 release acceptance or current availability
+> of the earlier packages.
+
 Status: **complete**. Public releases, anonymous artifact retrieval, the
 initial local cold reset, direct public-release deployment, owner repeat,
 actual Helm upgrade and second cold restart have passed.

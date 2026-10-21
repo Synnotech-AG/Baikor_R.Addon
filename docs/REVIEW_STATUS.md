@@ -1,5 +1,11 @@
 # Review findings status
 
+> **Current installation target: addon/application/chart 0.2.0.** See the
+> [README](../README.md) and [Windows guide](windows-core-1.6-first-install.md).
+> Release numbering restarts at 0.2.0 and supersedes the earlier 1.7.x packages.
+> The dated reports below preserve historical evidence; they do not establish
+> 0.2.0 release acceptance or continued availability of earlier packages.
+
 ## Public 1.7.8 acceptance — 2026-10-21
 
 Application/chart **1.7.8** is public: [Release run 39587862516](https://github.com/Synnotech-AG/Baikor_R/actions/runs/39587862516)

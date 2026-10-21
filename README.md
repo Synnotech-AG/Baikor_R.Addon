@@ -35,16 +35,18 @@ and the remaining operator/publication decisions.
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. This addon revision pins
-application/chart **1.7.9** on GHCR. Application versions and Core versions are
+application/chart **0.2.0** on GHCR. Application versions and Core versions are
 independent. Core 1.6.0 deployment evidence is recorded in the
 [deployment review](docs/core-1.6.0-deployment-review.md), including the local
 platform adjustments and test boundaries.
 
-**Release pairing:** Addon **1.7.10** uses application/chart **1.7.9**.
-Both source repositories and both GHCR packages are public. Use the application and
-chart versions pinned by your selected addon release. Application 1.7.6 does not
-support this revision's importer role. Earlier published-release verification
-and runtime results are recorded in the [review status](docs/REVIEW_STATUS.md).
+**Release pairing:** Addon **0.2.0** uses application/chart **0.2.0**.
+Release numbering restarts at **0.2.0**, which supersedes the earlier **1.7.x**
+application/chart packages. Use this pairing for new installations and updates.
+Both source repositories and both GHCR packages are public. Older source tags
+and dated acceptance reports remain historical records; their package references
+are not installation instructions. See the [review status](docs/REVIEW_STATUS.md)
+for earlier verification and its scope.
 
 ### Add the addon to CIVITAS/CORE
 
@@ -256,13 +258,14 @@ for defaults, examples and migration-Job coverage.
 The application image and Helm chart are pinned in
 [`vars/software_references.yml`](vars/software_references.yml):
 
-- Image: `ghcr.io/synnotech-ag/baikor-r:1.7.9`.
-- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `1.7.9`.
+- Image: `ghcr.io/synnotech-ag/baikor-r:0.2.0`.
+- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `0.2.0`.
 
 Both Baikor packages are published through the application's
 [Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).
-The package names are public; released versions can be downloaded without a
-registry login. Verify availability of the exact pinned versions before deployment.
+The package names are public; download the pinned **0.2.0** versions without a
+registry login. Verify their availability before deployment. Older 1.7.x package
+references in historical reports are superseded by this release pairing.
 The workflow verifies downloads without registry credentials before creating
 the release. Permit GHCR downloads from your platform or mirror the artifacts.
 The PostgreSQL bootstrap client remains a separately pinned Docker Hub image.
@@ -383,7 +386,7 @@ namespace. On first activation, the addon creates the client directly with the
 but cannot read the workspace or edit, approve or delete records. Repeating the
 deployment preserves the client's credentials and reapplies its configuration.
 Use a dedicated client managed by this addon; do not add human roles or scopes
-to it. The application must support the importer role (1.7.7 or later).
+to it. The pinned application/chart 0.2.0 includes the importer role.
 
 After obtaining a client-credentials access token from the existing Keycloak realm,
 upload an R-KOM trench export:
