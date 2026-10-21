@@ -264,8 +264,10 @@ The application image and Helm chart are pinned in
 Both Baikor packages are published through the application's
 [Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).
 The package names are public; download the pinned **0.2.0** versions without a
-registry login. Verify their availability before deployment. Older 1.7.x package
-references in historical reports are superseded by this release pairing.
+registry login. Verify their availability before deployment. The earlier 1.7.x
+image/chart versions (1.7.6 through 1.7.9) have been removed from GHCR; only 0.2.0
+remains in both packages. Older package references in historical reports are
+superseded by this release pairing.
 The workflow verifies downloads without registry credentials before creating
 the release. Permit GHCR downloads from your platform or mirror the artifacts.
 The PostgreSQL bootstrap client remains a separately pinned Docker Hub image.

@@ -3,8 +3,30 @@
 > **Current installation target: addon/application/chart 0.2.0.** See the
 > [README](../README.md) and [Windows guide](windows-core-1.6-first-install.md).
 > Release numbering restarts at 0.2.0 and supersedes the earlier 1.7.x packages.
-> The dated reports below preserve historical evidence; they do not establish
-> 0.2.0 release acceptance or continued availability of earlier packages.
+> The earlier 1.7.x reports below preserve historical evidence within their
+> original scope. Those GHCR package versions have now been removed.
+
+## Public 0.2.0 release and package retirement — 2026-10-21
+
+[Application/chart 0.2.0](https://github.com/Synnotech-AG/Baikor_R/releases/tag/0.2.0)
+was published from `66af217bb6c6ea487b951deb4e67b557a18f3c72` by the successful
+[release run 39593999803](https://github.com/Synnotech-AG/Baikor_R/actions/runs/39593999803).
+[Addon 0.2.0](https://github.com/Synnotech-AG/Baikor_R.Addon/releases/tag/0.2.0)
+was published from `7baba118a4a87dde5a0adbaf65cfc46c1ffe03ca` after all four jobs in
+[Validate run 39593722102](https://github.com/Synnotech-AG/Baikor_R.Addon/actions/runs/39593722102) passed.
+
+Anonymous image/chart downloads matched source metadata and checksums. The
+published image passed **106 isolated runtime assertions: 5 database, 77 human/API
+and 24 machine/import**, with zero failures. The current
+[Windows / Core 1.6 guide](windows-core-1.6-first-install.md) passed command-syntax
+and version-reference checks; this release was not installed end-to-end on a
+second Windows computer. Earlier Core deployment/restart results retain their
+recorded versions and scope.
+
+After that verification, GHCR image and chart versions **1.7.6 through 1.7.9**
+were removed. Anonymous registry checks found only **0.2.0** in both package tag
+lists; all eight old tags and eight old manifest digests returned **404**.
+Historical source tags, release records and the dated evidence below remain.
 
 ## Public 1.7.8 acceptance — 2026-10-21
 
