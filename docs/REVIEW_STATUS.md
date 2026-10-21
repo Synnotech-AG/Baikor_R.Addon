@@ -1,6 +1,31 @@
 # Review findings status
 
-## Working-tree verification — 2026-10-21
+## Public 1.7.8 acceptance — 2026-10-21
+
+Application/chart **1.7.8** is public: [Release run 39587862516](https://github.com/Synnotech-AG/Baikor_R/actions/runs/39587862516)
+published source `e3695b0`. [Addon **1.7.9**](https://github.com/Synnotech-AG/Baikor_R.Addon/releases/tag/1.7.9)
+is published from `1d8f696`;
+[Validate run 39588355428](https://github.com/Synnotech-AG/Baikor_R.Addon/actions/runs/39588355428)
+passed for that revision before publication. Local anonymous downloads matched
+the image digest, chart digest and release checksums.
+
+On the isolated Core **1.6.0** environment, all **13 initial steps** passed: **77 human, 70 importer,
+211 lifecycle and 41 runtime checks**. Actual isolated addon bootstrap passed
+**six phases**, including two owner-only repeats, wrong-CA/privileged-publisher
+rejection and recovery; its database, namespace and three roles were removed.
+Owner repetition passed **eight preservation comparisons** and **14 Keycloak
+continuity checks**.
+
+Migration under an existing NetworkPolicy and actual CNI denial passed. Cold
+restart restored **three nodes / 44 Pods in 143 seconds** without repair;
+**77 human + 70 import**, retained session (**14 checks**) and 64 KiB attachment
+(**19 checks**, including cleanup) passed afterward. Database, Keycloak and PVC
+comparisons passed. These tests use the documented local Core adjustments;
+they do not claim an untouched Core install or a Windows host reboot.
+
+Earlier working-tree and October 20 evidence below retain their original scope.
+
+## Earlier working-tree verification — 2026-10-21
 
 The [fresh Core 1.6 installation report](initial-installation-2026-10-21.md)
 records direct first setup, the cold-image-pull deadline fix, current source/image
@@ -57,12 +82,12 @@ follow-up; successful recovery does not establish a fix for that race.
 | --- | --- | --- |
 | A1 — Non-root operation and namespace PSA | Actual app/migration/bootstrap runtime credentials, capability masks, seccomp, read-only root filesystem and cgroup limits verified. PSA rejects root and privileged Pods; permitted temporary/PVC writes succeed and are cleaned. | Operator must keep Core PSA enabled. |
 | A2 — MDH database and owner operation | Complete on the addon side. Shared owner upgrades preserve data, grants, roles and PVCs. Fresh bootstrap, two owner-only repeats, wrong-CA/privileged-publisher rejection and recovery passed using actual addon tasks. Bootstrap privileges, owner-login operation and freely selectable credential namespace are documented. | MDH supplies its PostgreSQL address, CA and initial provisioning credentials as deployment inputs. No change to automatic database creation is required. |
-| B1 — Public source and license | Both source repositories are public under EUPL-1.2. Image and chart 1.7.7 can be downloaded anonymously. | None. |
+| B1 — Public source and license | Both source repositories are public under EUPL-1.2. Application image and chart 1.7.8 passed the release workflow's anonymous-download gate. | None. |
 | B2 — Core 1.6 compatibility | Complete for the requested local test: Core 1.6.0 with `enable_gateway: false` passed deployment and Geoportal tests. MDH remains on 1.6. The report retains the local Keycloak/image adjustments and test boundaries. | No 1.7.2 upgrade or separate 1.6 branch is required for this review decision. |
 | B3 — Resources and NetworkPolicy | Actual cgroup limits verified. Six functional probes passed with policy off, on, after repeat deployment and after restoration to off; real forbidden traffic is rejected and CNI counters increment. Migration succeeds with the existing policy present. | Operator chooses resource sizing and network rules. Migration hooks need an operator policy if they must also be isolated. |
-| C1 — Releases/changelog | Complete. Public GitHub releases exist for application 1.7.7 and addon 1.7.8, with changelogs and corrected README links. Application run `39239993018`, attempt 2, passed anonymous verification using the original source/digests. Addon release revision `050ce2e` passed all four CI jobs. The direct public-release runtime retest and local-profile restoration are complete. | None. |
+| C1 — Releases/changelog | Application/chart 1.7.8 and addon 1.7.9 are public, from `e3695b0` and `1d8f696`. Release run `39587862516` and addon Validate run `39588355428` passed. Anonymous retrieval, local runtime, repeat deployment, network and cold-restart acceptance passed as recorded above. | None. |
 | C2 — Import OpenAPI | Actual imports match success, validation and duplicate examples. Real file/buffer boundaries and cookie CSRF checked. Found and fixed the ingress size mismatch; guide now distinguishes importer 400, host form-binding 400 and proxy 413. | Operators using other ingress controllers must configure equivalent request limits. |
-| C3 — Tests in CI | Latest isolated Keycloak/PostGIS/Kestrel run passed 77 human and 24 machine checks. New tests cover exact 25 MiB, 25 MiB plus one byte and the complete-request cap. Current addon deadline and waiter regressions pass in 48 selected unit checks; see the [October 21 working-tree report](initial-installation-2026-10-21.md). | One initial isolated startup timeout is retained as an unconfirmed, unreproduced failure; see runtime report. Inspect hosted workflow results for the selected revision. |
+| C3 — Tests in CI | The October 21 CI TCP-readiness race is fixed on main at `4f570e2`; [CI run 39589291799](https://github.com/Synnotech-AG/Baikor_R/actions/runs/39589291799) passed. This later fixture fix does not change the released 1.7.8 source. Earlier isolated checks covered 77 human/24 machine checks and exact upload limits; addon deadline/waiter regressions passed 48 unit checks. | The October 19 isolated startup timeout remains unconfirmed and unreproduced; the separate TCP-readiness fix does not establish its cause. |
 | C4 — Browser scopes | Actual upgrade changed browser full scope from true to false and added exactly four explicit human-role scopes. All 77 real OIDC/session/API checks pass; existing operator access remains 200. | None in the tested local configuration. |
 | C5 — ASP.NET environment | Core names map to Development, Staging or Production; unknown values default to Production. Actual repeat deployment reports Production with authentication enabled and invalid-certificate bypass disabled. | Explicit Helm overrides remain the operator's responsibility. |
 | C6 — Import-only role | Fresh setup gives the dedicated machine client only `baikor_importer` in its role assignment, explicit token scope and issued tokens. Tests cover optional activation and repeated provisioning with preserved identity and credentials; valid imports work and general API operations remain forbidden. | Use compatible application/chart/addon versions and a dedicated `baikor-r-*` import client. Operators must review any manually added roles or scopes; do not reuse a client with unrelated grants. |
