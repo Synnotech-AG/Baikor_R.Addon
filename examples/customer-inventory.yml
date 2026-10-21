@@ -54,4 +54,4 @@ all:
               dataProtection:
                 persistence:
                   enabled: true
-                  storageClassName: "" # uses the cluster default; agree with operator
+                  storageClassName: "" # uses the cluster default; set an explicit class if required

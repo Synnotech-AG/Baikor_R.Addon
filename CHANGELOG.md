@@ -3,6 +3,19 @@
 Released revisions are listed in
 [GitHub Releases](https://github.com/Synnotech-AG/Baikor_R.Addon/releases).
 
+## Unreleased
+
+- Allow ten minutes for database bootstrap, including uncached image downloads,
+  and align controller polling with that deadline. Report failed Job conditions
+  immediately even when no failed Pod count is available.
+- Provision the optional import client directly with importer-only permissions;
+  remove the obsolete editor-role transition for pre-release installations.
+- Test fresh Keycloak provisioning, optional importer activation and repeated
+  deployment with stable credentials instead of seeding a legacy client.
+- Run addon CI against Core 1.6.0, matching the supported ingress deployment.
+- Address installation guidance to platform operators without customer-specific
+  provisioning assumptions.
+
 ## 1.7.8 — 2026-10-20
 
 - Scope the browser client's tokens explicitly to the four human Baikor roles.

@@ -1,5 +1,19 @@
 # Review findings status
 
+## Working-tree verification — 2026-10-21
+
+The [fresh Core 1.6 installation report](initial-installation-2026-10-21.md)
+records direct first setup, the cold-image-pull deadline fix, current source/image
+identity, successful owner repetition, actual NetworkPolicy enforcement and cold
+restart with retained data and authentication. The original local environment is
+restored and its 20 auth/API checks passed. Its existing kubelet certificate IP SAN
+mismatch blocks `kubectl exec`; no TLS bypass or repair was performed. Read-only
+Docker→CRI SQL matched all six database sections against the historical baseline
+from **2026-10-20 08:34:43 UTC**, not a snapshot immediately before this test.
+Only the original profile is active. Published versions and historical verification are unchanged.
+
+## Published release verification — 2026-10-20
+
 Status: **2026-10-20**. Both source repositories and both GHCR packages are
 public. Anonymous Docker and Helm downloads of application/chart **1.7.7**
 succeeded using empty credential configurations. The original application
@@ -48,10 +62,10 @@ follow-up; successful recovery does not establish a fix for that race.
 | B3 — Resources and NetworkPolicy | Actual cgroup limits verified. Six functional probes passed with policy off, on, after repeat deployment and after restoration to off; real forbidden traffic is rejected and CNI counters increment. Migration succeeds with the existing policy present. | Operator chooses resource sizing and network rules. Migration hooks need an operator policy if they must also be isolated. |
 | C1 — Releases/changelog | Complete. Public GitHub releases exist for application 1.7.7 and addon 1.7.8, with changelogs and corrected README links. Application run `39239993018`, attempt 2, passed anonymous verification using the original source/digests. Addon release revision `050ce2e` passed all four CI jobs. The direct public-release runtime retest and local-profile restoration are complete. | None. |
 | C2 — Import OpenAPI | Actual imports match success, validation and duplicate examples. Real file/buffer boundaries and cookie CSRF checked. Found and fixed the ingress size mismatch; guide now distinguishes importer 400, host form-binding 400 and proxy 413. | Operators using other ingress controllers must configure equivalent request limits. |
-| C3 — Tests in CI | Latest isolated Keycloak/PostGIS/Kestrel run passed 77 human and 24 machine checks. New tests cover exact 25 MiB, 25 MiB plus one byte and the complete-request cap. Addon waiter regressions pass in 44 selected unit checks. | One initial isolated startup timeout is retained as an unconfirmed, unreproduced failure; see runtime report. Inspect hosted workflow results for the selected revision. |
+| C3 — Tests in CI | Latest isolated Keycloak/PostGIS/Kestrel run passed 77 human and 24 machine checks. New tests cover exact 25 MiB, 25 MiB plus one byte and the complete-request cap. Current addon deadline and waiter regressions pass in 48 selected unit checks; see the [October 21 working-tree report](initial-installation-2026-10-21.md). | One initial isolated startup timeout is retained as an unconfirmed, unreproduced failure; see runtime report. Inspect hosted workflow results for the selected revision. |
 | C4 — Browser scopes | Actual upgrade changed browser full scope from true to false and added exactly four explicit human-role scopes. All 77 real OIDC/session/API checks pass; existing operator access remains 200. | None in the tested local configuration. |
 | C5 — ASP.NET environment | Core names map to Development, Staging or Production; unknown values default to Production. Actual repeat deployment reports Production with authentication enabled and invalid-certificate bypass disabled. | Explicit Helm overrides remain the operator's responsibility. |
-| C6 — Import-only role | Existing machine account had an editor assignment, scope and token before upgrade. All three now contain only `baikor_importer`; valid imports work and nine general API operations return 403. | Deploy addon 1.7.8 with application/chart 1.7.7 and obtain a fresh token. Existing tokens keep their old privileges until expiry. |
+| C6 — Import-only role | Fresh setup gives the dedicated machine client only `baikor_importer` in its role assignment, explicit token scope and issued tokens. Tests cover optional activation and repeated provisioning with preserved identity and credentials; valid imports work and general API operations remain forbidden. | Use compatible application/chart/addon versions and a dedicated `baikor-r-*` import client. Operators must review any manually added roles or scopes; do not reuse a client with unrelated grants. |
 | C7 — Publication approval | README and inventory explicitly require recorded business approval and privacy review of public free text before enabling publication. | Actual approvals belong to the responsible data owner/operator and are not supplied by technical tests. |
 | C8 — Task/update/CI details | Actual addon deployment restores deliberate managed FeatureType title/abstract drift; live publication lifecycle passed 211 checks. Datastore task and Core CI path corrections remain covered. | GeoServer may normalize previously absent flags; byte-identical FeatureType JSON is not promised. |
 

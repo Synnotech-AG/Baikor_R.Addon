@@ -84,55 +84,6 @@
   when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
   no_log: true
 
-- name: "Baikor_R Keycloak: Read editor role"
-  ansible.builtin.uri:
-    method: GET
-    url: "{{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name }}/clients/{{ baikor_keycloak_client_uuid }}/roles/baikor_editor"
-    return_content: true
-    ca_path: "{{ inv_k8s.ingress.ca_path }}"
-    headers:
-      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
-    status_code: 200
-  register: baikor_keycloak_editor_role
-  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
-  no_log: true
-
-- name: "Baikor_R Keycloak: Revoke legacy editor role from import service account"
-  ansible.builtin.uri:
-    method: DELETE
-    url: >-
-      {{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name
-      }}/users/{{ baikor_import_service_account.json.id
-      }}/role-mappings/clients/{{ baikor_keycloak_client_uuid }}
-    return_content: true
-    ca_path: "{{ inv_k8s.ingress.ca_path }}"
-    body_format: json
-    body:
-      - "{{ baikor_keycloak_editor_role.json }}"
-    headers:
-      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
-    status_code: 204
-  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
-  no_log: true
-
-- name: "Baikor_R Keycloak: Revoke legacy editor scope from import machine client"
-  ansible.builtin.uri:
-    method: DELETE
-    url: >-
-      {{ inv_access.platform.hostname }}/admin/realms/{{ inv_access.tenant.realm_name
-      }}/clients/{{ baikor_import_keycloak_client_uuid
-      }}/scope-mappings/clients/{{ baikor_keycloak_client_uuid }}
-    return_content: true
-    ca_path: "{{ inv_k8s.ingress.ca_path }}"
-    body_format: json
-    body:
-      - "{{ baikor_keycloak_editor_role.json }}"
-    headers:
-      Authorization: "Bearer {{ baikor_keycloak_login.json.access_token }}"
-    status_code: 204
-  when: inv_addons.baikor_r.imports.service_account.enable | default(false) | bool
-  no_log: true
-
 - name: "Baikor_R Keycloak: Read importer role"
   ansible.builtin.uri:
     method: GET

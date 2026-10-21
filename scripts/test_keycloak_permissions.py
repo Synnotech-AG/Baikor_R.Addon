@@ -1,4 +1,4 @@
-"""Render provisioning requests and check role grants, upgrade revocation and scopes.
+"""Render fresh provisioning requests and check role grants and scopes.
 
 Uses only synthetic representations; never contacts Keycloak or Kubernetes.
 """
@@ -43,7 +43,6 @@ class KeycloakPermissionsTests(unittest.TestCase):
             "baikor_import_service_account": {"json": {"id": "service-user"}},
             "baikor_keycloak_admin_users": {"json": [{"id": "platform-admin"}]},
             "baikor_keycloak_roles": {"json": copy.deepcopy(ROLES)},
-            "baikor_keycloak_editor_role": {"json": copy.deepcopy(ROLES[1])},
             "baikor_keycloak_importer_role": {"json": copy.deepcopy(ROLES[-1])},
         }
         self.environment.globals["lookup"] = self.lookup
@@ -100,14 +99,13 @@ class KeycloakPermissionsTests(unittest.TestCase):
         self.assertEqual(len(scope), 1)
         self.assertEqual({role["name"] for role in scope[0]["body"]}, set(HUMAN_ROLES))
 
-    def test_importer_upgrade_revokes_editor_assignment_and_scope_before_granting_importer(self):
+    def test_fresh_importer_provisioning_assigns_only_importer_permissions(self):
         requests = self.requests("tasks/baikor_r/import_client.yml")
         for suffix in ("/users/service-user/role-mappings/clients/browser-uuid",
                        "/clients/import-uuid/scope-mappings/clients/browser-uuid"):
             writes = [r for r in requests if r["url"].endswith(suffix)]
-            self.assertEqual([r["method"] for r in writes], ["DELETE", "POST"])
-            self.assertEqual([role["name"] for role in writes[0]["body"]], ["baikor_editor"])
-            self.assertEqual([role["name"] for role in writes[1]["body"]], ["baikor_importer"])
+            self.assertEqual([r["method"] for r in writes], ["POST"])
+            self.assertEqual([role["name"] for role in writes[0]["body"]], ["baikor_importer"])
         client = next(r["body"] for r in requests if r["method"] == "PUT")
         self.assertFalse(client["fullScopeAllowed"])
         self.assertTrue(client["serviceAccountsEnabled"])

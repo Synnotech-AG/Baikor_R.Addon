@@ -2,7 +2,7 @@
 
 > This is not the production installation guide. Start with the
 > [README](../README.md). Production installations should create Secrets through
-> the customer's existing Ansible, secret manager or GitOps workflow.
+> your existing Ansible, secret manager or GitOps workflow.
 
 This fallback is intended only for development or a controlled test environment
 which has no established Secret provisioning process. It uses `kubectl` to create
