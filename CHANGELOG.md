@@ -5,6 +5,12 @@ Released revisions are listed in
 
 ## Unreleased
 
+## 1.7.9 — 2026-10-21
+
+- Pin application/chart 1.7.8 for public GHCR installation.
+- Add a complete Windows 11 / WSL2 / Core 1.6 first-install guide using the
+  public application image and OCI chart, with explicit Core patches, TLS,
+  database-owner transition and restart checks.
 - Allow ten minutes for database bootstrap, including uncached image downloads,
   and align controller polling with that deadline. Report failed Job conditions
   immediately even when no failed Pod count is available.

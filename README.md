@@ -8,6 +8,10 @@ separate [Baikor_R application repository](https://github.com/Synnotech-AG/Baiko
 This guide is for CIVITAS/CORE platform operators installing, configuring and
 updating the addon.
 
+For a complete local test setup on a fresh Windows 11 computer, follow the
+[Windows / Core 1.6 first-install guide](docs/windows-core-1.6-first-install.md)
+(German). It includes WSL2, Docker Desktop, Core prerequisites and restart checks.
+
 The [review status](docs/REVIEW_STATUS.md) records implemented findings, verification
 and the remaining operator/publication decisions.
 
@@ -31,16 +35,16 @@ and the remaining operator/publication decisions.
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. This addon revision pins
-application/chart **1.7.7** on GHCR. Application versions and Core versions are
+application/chart **1.7.8** on GHCR. Application versions and Core versions are
 independent. Core 1.6.0 deployment evidence is recorded in the
 [deployment review](docs/core-1.6.0-deployment-review.md), including the local
 platform adjustments and test boundaries.
 
-**Release pairing:** Addon **1.7.8** uses application/chart **1.7.7**. Both source
-repositories and both GHCR packages are public. Use the application and chart
-versions pinned by your selected addon release. Application 1.7.6 does not support
-this revision's importer role. Published-release verification and runtime results
-are recorded in the [review status](docs/REVIEW_STATUS.md).
+**Release pairing:** Addon **1.7.9** uses application/chart **1.7.8**.
+Both source repositories and both GHCR packages are public. Use the application and
+chart versions pinned by your selected addon release. Application 1.7.6 does not
+support this revision's importer role. Earlier published-release verification
+and runtime results are recorded in the [review status](docs/REVIEW_STATUS.md).
 
 ### Add the addon to CIVITAS/CORE
 
@@ -252,13 +256,13 @@ for defaults, examples and migration-Job coverage.
 The application image and Helm chart are pinned in
 [`vars/software_references.yml`](vars/software_references.yml):
 
-- Image: `ghcr.io/synnotech-ag/baikor-r:1.7.7`.
-- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `1.7.7`.
+- Image: `ghcr.io/synnotech-ag/baikor-r:1.7.8`.
+- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `1.7.8`.
 
 Both Baikor packages are published through the application's
 [Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).
-The existing packages are public, including future versions published under
-these package names; no registry login is required to download them.
+The package names are public; released versions can be downloaded without a
+registry login. Verify availability of the exact pinned versions before deployment.
 The workflow verifies downloads without registry credentials before creating
 the release. Permit GHCR downloads from your platform or mirror the artifacts.
 The PostgreSQL bootstrap client remains a separately pinned Docker Hub image.

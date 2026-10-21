@@ -4,6 +4,11 @@
 > [README](../README.md). Production installations should create Secrets through
 > your existing Ansible, secret manager or GitOps workflow.
 
+For a complete local test installation on a fresh Windows 11 computer, use the
+[Windows / Core 1.6 first-install guide](windows-core-1.6-first-install.md)
+(German), including its release prerequisites. It covers WSL2, Docker Desktop,
+Core, addon installation, the database-owner transition and restart checks.
+
 This fallback is intended only for development or a controlled test environment
 which has no established Secret provisioning process. It uses `kubectl` to create
 the two operator-owned database prerequisites. `kubectl` and Ansible use the same
