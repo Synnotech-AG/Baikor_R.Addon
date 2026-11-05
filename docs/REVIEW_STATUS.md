@@ -1,6 +1,6 @@
 # Review findings status
 
-> **Current installation target: addon/application/chart 0.2.0.** See the
+> **Current installation target is addon/application/chart 0.3.0.** See the
 > [README](../README.md) and [Windows guide](windows-core-1.6-first-install.md).
 > Release numbering restarts at 0.2.0 and supersedes the earlier 1.7.x packages.
 > The earlier 1.7.x reports below preserve historical evidence within their
@@ -17,8 +17,8 @@ was published from `7baba118a4a87dde5a0adbaf65cfc46c1ffe03ca` after all four job
 
 Anonymous image/chart downloads matched source metadata and checksums. The
 published image passed **106 isolated runtime assertions: 5 database, 77 human/API
-and 24 machine/import**, with zero failures. The current
-[Windows / Core 1.6 guide](windows-core-1.6-first-install.md) passed command-syntax
+and 24 machine/import**, with zero failures. The
+[0.2.0 Windows / Core 1.6 guide](https://github.com/Synnotech-AG/Baikor_R.Addon/blob/0.2.0/docs/windows-core-1.6-first-install.md) passed command-syntax
 and version-reference checks; this release was not installed end-to-end on a
 second Windows computer. Earlier Core deployment/restart results retain their
 recorded versions and scope.

@@ -35,18 +35,15 @@ and the remaining operator/publication decisions.
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. This addon revision pins
-application/chart **0.2.0** on GHCR. Application versions and Core versions are
+application/chart **0.3.0** on GHCR. Application versions and Core versions are
 independent. Core 1.6.0 deployment evidence is recorded in the
 [deployment review](docs/core-1.6.0-deployment-review.md), including the local
 platform adjustments and test boundaries.
 
-**Release pairing:** Addon **0.2.0** uses application/chart **0.2.0**.
-Release numbering restarts at **0.2.0**, which supersedes the earlier **1.7.x**
-application/chart packages. Use this pairing for new installations and updates.
-Both source repositories and both GHCR packages are public. Older source tags
-and dated acceptance reports remain historical records; their package references
-are not installation instructions. See the [review status](docs/REVIEW_STATUS.md)
-for earlier verification and its scope.
+Addon **0.3.0** uses application/chart **0.3.0** for new installations and
+updates. Both source repositories and both GHCR packages are public. Earlier
+release pairings and acceptance reports are recorded in the
+[review status](docs/REVIEW_STATUS.md).
 
 ### Add the addon to CIVITAS/CORE
 
@@ -54,6 +51,7 @@ Run from the CIVITAS/CORE repository root:
 
 ```shell
 git submodule add https://github.com/Synnotech-AG/Baikor_R.Addon.git core_platform/addons/baikor_r_addon
+git -C core_platform/addons/baikor_r_addon checkout --detach 0.3.0
 ```
 
 Commit the submodule pointer in your CIVITAS/CORE repository. For an
@@ -258,16 +256,14 @@ for defaults, examples and migration-Job coverage.
 The application image and Helm chart are pinned in
 [`vars/software_references.yml`](vars/software_references.yml):
 
-- Image: `ghcr.io/synnotech-ag/baikor-r:0.2.0`.
-- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `0.2.0`.
+- Image: `ghcr.io/synnotech-ag/baikor-r:0.3.0`.
+- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `0.3.0`.
 
 Both Baikor packages are published through the application's
 [Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).
-The package names are public; download the pinned **0.2.0** versions without a
-registry login. Verify their availability before deployment. The earlier 1.7.x
-image/chart versions (1.7.6 through 1.7.9) have been removed from GHCR; only 0.2.0
-remains in both packages. Older package references in historical reports are
-superseded by this release pairing.
+The pinned **0.3.0** packages can be downloaded without a registry login.
+Verify their availability before deployment. Image and chart versions 1.7.6
+through 1.7.9 were retired from GHCR.
 The workflow verifies downloads without registry credentials before creating
 the release. Permit GHCR downloads from your platform or mirror the artifacts.
 The PostgreSQL bootstrap client remains a separately pinned Docker Hub image.
@@ -388,7 +384,7 @@ namespace. On first activation, the addon creates the client directly with the
 but cannot read the workspace or edit, approve or delete records. Repeating the
 deployment preserves the client's credentials and reapplies its configuration.
 Use a dedicated client managed by this addon; do not add human roles or scopes
-to it. The pinned application/chart 0.2.0 includes the importer role.
+to it.
 
 After obtaining a client-credentials access token from the existing Keycloak realm,
 upload an R-KOM trench export:
@@ -409,8 +405,8 @@ for request fields, responses, examples and authentication details.
 
 ## Update
 
-Back up the database, pin the new addon commit or release and run the same Ansible
-deployment:
+Back up the database and check for local image and chart overrides before
+pinning the new addon commit or release and running the same Ansible deployment.
 
 ```shell
 git -C core_platform/addons/baikor_r_addon fetch origin

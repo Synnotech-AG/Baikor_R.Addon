@@ -5,6 +5,11 @@ Released revisions are listed in
 
 ## Unreleased
 
+## 0.3.0 — 2026-11-05
+
+- Pin the image and Helm chart to [Baikor_R 0.3.0](https://github.com/Synnotech-AG/Baikor_R/releases/tag/0.3.0).
+- Update the installation guides to use the 0.3.0 release pairing.
+
 ## 0.2.0 — 2026-10-21
 
 - Restart release numbering at 0.2.0 for the addon, application image and Helm
