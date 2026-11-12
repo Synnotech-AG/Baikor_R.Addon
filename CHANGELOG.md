@@ -5,6 +5,14 @@ Released revisions are listed in
 
 ## Unreleased
 
+## 0.3.1 — 2026-11-12
+
+- Pin application/chart 0.3.1, which sizes the Baikor ingress-nginx response
+  buffers for OIDC sign-in cookies and prevents callback 502 responses with
+  default controller buffers.
+- Document application-scoped buffer overrides and update installation examples
+  to the 0.3.1 release pairing.
+
 ## 0.3.0 — 2026-11-05
 
 - Pin the image and Helm chart to [Baikor_R 0.3.0](https://github.com/Synnotech-AG/Baikor_R/releases/tag/0.3.0).

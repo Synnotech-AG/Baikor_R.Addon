@@ -1,6 +1,6 @@
 # Review findings status
 
-> **Current installation target is addon/application/chart 0.3.0.** See the
+> **Current installation target is addon/application/chart 0.3.1.** See the
 > [README](../README.md) and [Windows guide](windows-core-1.6-first-install.md).
 > Release numbering restarts at 0.2.0 and supersedes the earlier 1.7.x packages.
 > The earlier 1.7.x reports below preserve historical evidence within their

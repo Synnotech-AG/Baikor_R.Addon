@@ -35,12 +35,12 @@ and the remaining operator/publication decisions.
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. This addon revision pins
-application/chart **0.3.0** on GHCR. Application versions and Core versions are
+application/chart **0.3.1** on GHCR. Application versions and Core versions are
 independent. Core 1.6.0 deployment evidence is recorded in the
 [deployment review](docs/core-1.6.0-deployment-review.md), including the local
 platform adjustments and test boundaries.
 
-Addon **0.3.0** uses application/chart **0.3.0** for new installations and
+Addon **0.3.1** uses application/chart **0.3.1** for new installations and
 updates. Both source repositories and both GHCR packages are public. Earlier
 release pairings and acceptance reports are recorded in the
 [review status](docs/REVIEW_STATUS.md).
@@ -51,7 +51,7 @@ Run from the CIVITAS/CORE repository root:
 
 ```shell
 git submodule add https://github.com/Synnotech-AG/Baikor_R.Addon.git core_platform/addons/baikor_r_addon
-git -C core_platform/addons/baikor_r_addon checkout --detach 0.3.0
+git -C core_platform/addons/baikor_r_addon checkout --detach 0.3.1
 ```
 
 Commit the submodule pointer in your CIVITAS/CORE repository. For an
@@ -226,7 +226,17 @@ The addon maps the Core `ENVIRONMENT` value to ASP.NET's canonical names:
 | Production names, empty values and unrecognized values | `Production` |
 
 Authentication remains explicitly enabled by the addon in every environment.
-Use `inv_addons.baikor_r.helm_values` for deliberate chart overrides, for example:
+Use `inv_addons.baikor_r.helm_values` for deliberate chart overrides.
+
+The pinned chart configures the Baikor Ingress with a `32k` response-header
+buffer and `8` proxy buffers for ingress-nginx. These defaults allow the OIDC
+sign-in response cookies without changing the controller's global configuration.
+Override them under `inv_addons.baikor_r.helm_values.ingress.annotations` when
+needed. Other controllers need equivalent response-header settings; remove
+individual nginx annotations with YAML `null`, or the entire map with
+`ingress.annotations: null`. An empty map retains the chart defaults.
+
+For example:
 
 ```yaml
 inv_addons:
@@ -256,12 +266,12 @@ for defaults, examples and migration-Job coverage.
 The application image and Helm chart are pinned in
 [`vars/software_references.yml`](vars/software_references.yml):
 
-- Image: `ghcr.io/synnotech-ag/baikor-r:0.3.0`.
-- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `0.3.0`.
+- Image: `ghcr.io/synnotech-ag/baikor-r:0.3.1`.
+- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `0.3.1`.
 
 Both Baikor packages are published through the application's
 [Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).
-The pinned **0.3.0** packages can be downloaded without a registry login.
+The pinned **0.3.1** packages can be downloaded without a registry login.
 Verify their availability before deployment. Image and chart versions 1.7.6
 through 1.7.9 were retired from GHCR.
 The workflow verifies downloads without registry credentials before creating
