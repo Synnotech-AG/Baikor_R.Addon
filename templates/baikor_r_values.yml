@@ -42,6 +42,13 @@ database:
     name: "baikor-r-database-owner"
     key: connectionString
 
+mailImports:
+  workerEnabled: {{ inv_addons.baikor_r.mail_imports.worker_enabled | default(true) | bool | to_json }}
+  encryption:
+    existingSecret:
+      name: {{ inv_addons.baikor_r.mail_imports.encryption_secret | default('baikor-r-mail-encryption') | to_json }}
+      key: key
+
 migrations:
   enabled: true
 

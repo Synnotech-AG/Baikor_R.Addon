@@ -154,6 +154,12 @@ jobs:
           --kubeconfig "$RUNNER_TEMP/baikor-ci.kubeconfig"
           --context k3d-baikor-ci
 
+      - name: Test native mail encryption Secret upgrade persistence
+        run: >-
+          python scripts/test_mail_import_secret.py
+          --kubeconfig "$RUNNER_TEMP/baikor-ci.kubeconfig"
+          --context k3d-baikor-ci
+
       - name: Test the real bootstrap Job on a fresh database
         run: >-
           python scripts/ci_database_bootstrap.py

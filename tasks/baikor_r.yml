@@ -37,6 +37,9 @@
 - name: "Baikor_R: Configure Keycloak client and roles"
   ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/keycloak.yml"
 
+- name: "Baikor_R: Preserve the native mail credential encryption key"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/mail_imports.yml"
+
 - name: "Baikor_R: Create ingress certificate"
   ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/ingress.yml"
   when: inv_addons.baikor_r.enable_ingress

@@ -115,6 +115,15 @@ all:
               # Name used when the addon creates the bootstrap pull Secret.
               image_pull_secret_name: baikor-r-bootstrap-registry
 
+            # Native IMAP credentials are configured by an administrator in
+            # Baikor. No Node-RED workflow or Keycloak machine client is needed.
+            mail_imports:
+              worker_enabled: true
+              # Created once in ns_name if missing; retained across upgrades.
+              # An operator-provided Secret must contain key: base64(32 random
+              # bytes), as a stringData value. Back it up with the database.
+              encryption_secret: baikor-r-mail-encryption
+
             imports:
               service_account:
                 # OPTIONAL: Create a confidential Keycloak machine client for the

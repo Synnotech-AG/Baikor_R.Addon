@@ -35,12 +35,12 @@ and the remaining operator/publication decisions.
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. This addon revision pins
-application/chart **0.3.2** on GHCR. Application versions and Core versions are
+application/chart **0.4.0** on GHCR. Application versions and Core versions are
 independent. Core 1.6.0 deployment evidence is recorded in the
 [deployment review](docs/core-1.6.0-deployment-review.md), including the local
 platform adjustments and test boundaries.
 
-Addon **0.3.2** uses application/chart **0.3.2** for new installations and
+Addon **0.4.0** uses application/chart **0.4.0** for new installations and
 updates. Both source repositories and both GHCR packages are public. Earlier
 release pairings and acceptance reports are recorded in the
 [review status](docs/REVIEW_STATUS.md).
@@ -51,7 +51,7 @@ Run from the CIVITAS/CORE repository root:
 
 ```shell
 git submodule add https://github.com/Synnotech-AG/Baikor_R.Addon.git core_platform/addons/baikor_r_addon
-git -C core_platform/addons/baikor_r_addon checkout --detach 0.3.2
+git -C core_platform/addons/baikor_r_addon checkout --detach 0.4.0
 ```
 
 Commit the submodule pointer in your CIVITAS/CORE repository. For an
@@ -266,12 +266,12 @@ for defaults, examples and migration-Job coverage.
 The application image and Helm chart are pinned in
 [`vars/software_references.yml`](vars/software_references.yml):
 
-- Image: `ghcr.io/synnotech-ag/baikor-r:0.3.2`.
-- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `0.3.2`.
+- Image: `ghcr.io/synnotech-ag/baikor-r:0.4.0`.
+- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `0.4.0`.
 
 Both Baikor packages are published through the application's
 [Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).
-The pinned **0.3.2** packages can be downloaded without a registry login.
+The pinned **0.4.0** packages can be downloaded without a registry login.
 Verify their availability before deployment. Image and chart versions 1.7.6
 through 1.7.9 were retired from GHCR.
 The workflow verifies downloads without registry credentials before creating
@@ -374,10 +374,54 @@ and `database.ca_secret` does not automatically mount that CA into GeoServer.
 The preflight validates the reference's format; datasource availability and TLS
 are verified when GeoServer opens the published feature types.
 
+## Native email imports
+
+Configure IMAP on Baikor's Import page as an administrator. Baikor processes new
+ZIP attachments with its built-in worker; no Node-RED flow or special Keycloak
+import user is required. Native mail does not use the optional import API client.
+
+The addon creates `baikor-r-mail-encryption` in the application namespace only
+when missing and preserves its random 32-byte encryption key on upgrades. Back
+up this Secret with the application database. All app instances sharing that
+database need the same Secret value. Existing invalid keys are rejected instead
+of overwritten. The mailbox password is entered in Baikor and encrypted in the
+private application database; it is not stored in inventory or Helm values.
+
+Optional inventory overrides:
+
+```yaml
+inv_addons:
+    baikor_r:
+        mail_imports:
+            worker_enabled: true
+            encryption_secret: baikor-r-mail-encryption
+```
+
+An operator-provided Secret of that name must contain `key`, whose string value
+is base64 encoding of 32 cryptographically random bytes. Keep the name stable.
+The application remains usable if the key is unavailable; mail processing reports
+the error. Restore the original key if it is lost. Rotating the key requires
+pausing processing, backing up the old key/database, updating every instance and
+re-entering the mailbox password. A fresh installation starts with mail disabled.
+
+TLS verification is mandatory. Optional NetworkPolicy installations must explicitly
+allow their IMAP destination and DNS; the addon does not broaden egress. On first
+enable, existing mailbox messages are skipped. Pause/resume keeps the cursor.
+
+For an existing mail workflow, follow the application's [mail setup and cutover
+guide](https://github.com/Synnotech-AG/Baikor_R/blob/0.4.0/docs/MAIL_IMPORTS.md).
+Quiesce the dedicated workflow, preserve all completed ledger hashes with the
+provided migration tool, securely transfer settings, then enable native imports
+and verify a new message. Retain the old ledger/PVC for rollback and preserve
+unrelated workflows. The addon never deletes operator-owned Node-RED resources.
+Disabling `imports.service_account.enable` skips further management of the existing
+Keycloak client and Secret. Once the native cutover is verified, revoke a client
+used exclusively by the old workflow. Retain it for any independent API consumers.
+
 ## Optional Import API
 
-The addon exposes an import API but does not install or modify your existing
-Node-RED flows. Enable an addon-managed machine client only when required:
+Independent integrations can use the authenticated import API. Enable an
+addon-managed machine client only when required by such a consumer:
 
 ```yaml
 inv_addons:
@@ -436,7 +480,8 @@ The [Validate workflow](.github/workflows/validate.yml) runs on pushes and pull
 requests. It covers Ansible lint, registry and preflight unit tests, GeoServer
 templates, operator ownership, Node-RED examples, Npgsql connection strings,
 database-owner privileges, namespace Pod Security Admission, the real database
-bootstrap Job and actual Keycloak first activation and repeated provisioning.
+bootstrap Job, native-mail encryption-key preservation and actual Keycloak first
+activation and repeated provisioning.
 
 The database and Kubernetes checks create disposable PostGIS containers and a
 dedicated k3d cluster with synthetic credentials. They do not need your deployment

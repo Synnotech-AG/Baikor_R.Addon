@@ -3,7 +3,15 @@
 Released revisions are listed in
 [GitHub Releases](https://github.com/Synnotech-AG/Baikor_R.Addon/releases).
 
-## Unreleased
+## 0.4.0 — 2026-11-26
+
+- Pin the application image and Helm chart to 0.4.0. Expired browser sessions
+  now show the signed-out page, where users can sign in again through Keycloak.
+- Support native IMAP imports with a dedicated create-once encryption Secret,
+  shared by app instances and preserved across upgrades. Mail credentials are
+  configured in Baikor; native imports require no Node-RED flow or import user.
+- Document native-mail setup, key backup and migration while retaining the
+  optional external import API and its default-disabled machine client.
 
 ## 0.3.2 — 2026-11-26
 
