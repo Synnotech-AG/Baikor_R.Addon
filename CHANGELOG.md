@@ -5,6 +5,14 @@ Released revisions are listed in
 
 ## Unreleased
 
+## 0.3.2 — 2026-11-26
+
+- Pin application/chart 0.3.2, which starts a fresh Keycloak login from the
+  signed-out page and prevents stale application HTML after logout and login.
+- Include the updated hints panel, which hides evaluation-status banners while
+  retaining automatic detection, administrator rechecks and loading/saving errors.
+- Update installation examples to the 0.3.2 release pairing.
+
 ## 0.3.1 — 2026-11-12
 
 - Pin application/chart 0.3.1, which sizes the Baikor ingress-nginx response
