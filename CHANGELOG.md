@@ -3,6 +3,13 @@
 Released revisions are listed in
 [GitHub Releases](https://github.com/Synnotech-AG/Baikor_R.Addon/releases).
 
+## 0.4.1 — 2026-11-27
+
+- Pin the application image and Helm chart to 0.4.1. Baikor administrators can
+  edit an active IMAP connection, test it and request a mail check from Settings.
+- Simplify email import history to the ZIP filename, completion time and result.
+  Settings and history remain restricted to users with the `baikor_admin` role.
+
 ## 0.4.0 — 2026-11-26
 
 - Pin the application image and Helm chart to 0.4.0. Expired browser sessions

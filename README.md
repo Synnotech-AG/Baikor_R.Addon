@@ -35,12 +35,12 @@ and the remaining operator/publication decisions.
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. This addon revision pins
-application/chart **0.4.0** on GHCR. Application versions and Core versions are
+application/chart **0.4.1** on GHCR. Application versions and Core versions are
 independent. Core 1.6.0 deployment evidence is recorded in the
 [deployment review](docs/core-1.6.0-deployment-review.md), including the local
 platform adjustments and test boundaries.
 
-Addon **0.4.0** uses application/chart **0.4.0** for new installations and
+Addon **0.4.1** uses application/chart **0.4.1** for new installations and
 updates. Both source repositories and both GHCR packages are public. Earlier
 release pairings and acceptance reports are recorded in the
 [review status](docs/REVIEW_STATUS.md).
@@ -51,7 +51,7 @@ Run from the CIVITAS/CORE repository root:
 
 ```shell
 git submodule add https://github.com/Synnotech-AG/Baikor_R.Addon.git core_platform/addons/baikor_r_addon
-git -C core_platform/addons/baikor_r_addon checkout --detach 0.4.0
+git -C core_platform/addons/baikor_r_addon checkout --detach 0.4.1
 ```
 
 Commit the submodule pointer in your CIVITAS/CORE repository. For an
@@ -266,12 +266,12 @@ for defaults, examples and migration-Job coverage.
 The application image and Helm chart are pinned in
 [`vars/software_references.yml`](vars/software_references.yml):
 
-- Image: `ghcr.io/synnotech-ag/baikor-r:0.4.0`.
-- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `0.4.0`.
+- Image: `ghcr.io/synnotech-ag/baikor-r:0.4.1`.
+- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `0.4.1`.
 
 Both Baikor packages are published through the application's
 [Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).
-The pinned **0.4.0** packages can be downloaded without a registry login.
+The pinned **0.4.1** packages can be downloaded without a registry login.
 Verify their availability before deployment. Image and chart versions 1.7.6
 through 1.7.9 were retired from GHCR.
 The workflow verifies downloads without registry credentials before creating
@@ -376,9 +376,12 @@ are verified when GeoServer opens the published feature types.
 
 ## Native email imports
 
-Configure IMAP on Baikor's Import page as an administrator. Baikor processes new
-ZIP attachments with its built-in worker; no Node-RED flow or special Keycloak
-import user is required. Native mail does not use the optional import API client.
+Users with the `baikor_admin` role configure the mailbox under **Import →
+Email import → Settings**, including while import is active. They can test the
+connection, check the saved mailbox immediately and see processed ZIP files
+with a completion time and success or failure. The settings and history are
+visible only to these administrators. Baikor's built-in worker processes new ZIP
+attachments without a Node-RED flow or a special Keycloak import user.
 
 The addon creates `baikor-r-mail-encryption` in the application namespace only
 when missing and preserves its random 32-byte encryption key on upgrades. Back
@@ -405,11 +408,12 @@ pausing processing, backing up the old key/database, updating every instance and
 re-entering the mailbox password. A fresh installation starts with mail disabled.
 
 TLS verification is mandatory. Optional NetworkPolicy installations must explicitly
-allow their IMAP destination and DNS; the addon does not broaden egress. On first
-enable, existing mailbox messages are skipped. Pause/resume keeps the cursor.
+allow their IMAP destination and DNS. On first activation or when switching to
+a different mailbox, Baikor starts with new mail. Turning import off and back
+on for the same mailbox preserves its position.
 
 For an existing mail workflow, follow the application's [mail setup and cutover
-guide](https://github.com/Synnotech-AG/Baikor_R/blob/0.4.0/docs/MAIL_IMPORTS.md).
+guide](https://github.com/Synnotech-AG/Baikor_R/blob/0.4.1/docs/MAIL_IMPORTS.md).
 Quiesce the dedicated workflow, preserve all completed ledger hashes with the
 provided migration tool, securely transfer settings, then enable native imports
 and verify a new message. Retain the old ledger/PVC for rollback and preserve
@@ -463,10 +467,14 @@ Back up the database and check for local image and chart overrides before
 pinning the new addon commit or release and running the same Ansible deployment.
 
 ```shell
-git -C core_platform/addons/baikor_r_addon fetch origin
-git -C core_platform/addons/baikor_r_addon checkout NEW_REF
+git -C core_platform/addons/baikor_r_addon fetch origin tag 0.4.1
+git -C core_platform/addons/baikor_r_addon checkout --detach 0.4.1
 ansible-playbook -i inventory.yml core_platform/playbook.yml --tags addons
 ```
+
+Record the updated submodule pointer in your Core repository. The default
+addon pins select application image and Helm chart 0.4.1. An existing native
+mail setup reuses its encryption Secret and saved mailbox settings.
 
 Changes awaiting publication are recorded in [CHANGELOG.md](CHANGELOG.md).
 Released changes are documented in the
