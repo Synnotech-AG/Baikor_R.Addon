@@ -3,6 +3,17 @@
 Released revisions are listed in
 [GitHub Releases](https://github.com/Synnotech-AG/Baikor_R.Addon/releases).
 
+## 0.4.2 — 2026-11-27
+
+- Pin the application image and Helm chart to 0.4.2. The addon provisions a
+  shared application encryption key automatically and preserves existing mail
+  passwords and custom Secret references during upgrades.
+- Verify the required Secret reference and key in every ready Baikor replica.
+  A deployment with an unused Secret, an incompatible image or an unreadable
+  saved password fails the playbook with recovery instructions.
+- Report the Secret name and field if Kubernetes denies creation, and document
+  how platform administrators can provide the same key through Kubernetes.
+
 ## 0.4.1 — 2026-11-27
 
 - Pin the application image and Helm chart to 0.4.1. Baikor administrators can

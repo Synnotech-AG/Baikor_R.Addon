@@ -119,10 +119,12 @@ all:
             # Baikor. No Node-RED workflow or Keycloak machine client is needed.
             mail_imports:
               worker_enabled: true
-              # Created once in ns_name if missing; retained across upgrades.
-              # An operator-provided Secret must contain key: base64(32 random
-              # bytes), as a stringData value. Back it up with the database.
-              encryption_secret: baikor-r-mail-encryption
+
+            # By default the addon provisions baikor-r-encryption and carries
+            # forward any existing key from the application or the legacy mail
+            # import Secret. Leave empty for automatic selection on upgrades.
+            encryption:
+              secret: ""
 
             imports:
               service_account:

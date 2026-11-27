@@ -32,19 +32,15 @@ class HelmEnvironmentTests(unittest.TestCase):
     def render(self, core_environment=None):
         return self.render_values(core_environment)["aspnetCore"]["environment"]
 
-    def test_native_mail_uses_persistent_dedicated_key_without_import_account(self):
+    def test_native_mail_does_not_require_legacy_encryption_or_import_account(self):
         values = self.render_values()
-        self.assertEqual(values.get("mailImports"), {
-            "workerEnabled": True,
-            "encryption": {"existingSecret": {"name": "baikor-r-mail-encryption", "key": "key"}}})
+        self.assertEqual(values["mailImports"], {"workerEnabled": True})
         self.assertFalse(DEFAULTS["imports"]["service_account"]["enable"])
 
-    def test_operator_mail_key_reference_and_worker_switch_are_preserved(self):
+    def test_operator_mail_worker_switch_is_preserved(self):
         values = self.render_values(overrides={"mail_imports": {
             "worker_enabled": False, "encryption_secret": "operator-mail-key"}})
-        self.assertEqual(values.get("mailImports"), {
-            "workerEnabled": False,
-            "encryption": {"existingSecret": {"name": "operator-mail-key", "key": "key"}}})
+        self.assertEqual(values["mailImports"], {"workerEnabled": False})
 
     def test_development_names(self):
         for name in ("dev", "development", "local", " DEV ", "Development"):

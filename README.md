@@ -35,12 +35,12 @@ and the remaining operator/publication decisions.
 
 The addon creates its own database and roles on the supplied PostgreSQL server; it
 does not install a database server in production. This addon revision pins
-application/chart **0.4.1** on GHCR. Application versions and Core versions are
+application/chart **0.4.2** on GHCR. Application versions and Core versions are
 independent. Core 1.6.0 deployment evidence is recorded in the
 [deployment review](docs/core-1.6.0-deployment-review.md), including the local
 platform adjustments and test boundaries.
 
-Addon **0.4.1** uses application/chart **0.4.1** for new installations and
+Addon **0.4.2** uses application/chart **0.4.2** for new installations and
 updates. Both source repositories and both GHCR packages are public. Earlier
 release pairings and acceptance reports are recorded in the
 [review status](docs/REVIEW_STATUS.md).
@@ -51,7 +51,7 @@ Run from the CIVITAS/CORE repository root:
 
 ```shell
 git submodule add https://github.com/Synnotech-AG/Baikor_R.Addon.git core_platform/addons/baikor_r_addon
-git -C core_platform/addons/baikor_r_addon checkout --detach 0.4.1
+git -C core_platform/addons/baikor_r_addon checkout --detach 0.4.2
 ```
 
 Commit the submodule pointer in your CIVITAS/CORE repository. For an
@@ -266,13 +266,13 @@ for defaults, examples and migration-Job coverage.
 The application image and Helm chart are pinned in
 [`vars/software_references.yml`](vars/software_references.yml):
 
-- Image: `ghcr.io/synnotech-ag/baikor-r:0.4.1`.
-- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `0.4.1`.
+- Image: `ghcr.io/synnotech-ag/baikor-r:0.4.2`.
+- Chart: `oci://ghcr.io/synnotech-ag/baikor-r-chart`, version `0.4.2`.
 
 Both Baikor packages are published through the application's
 [Release workflow](https://github.com/Synnotech-AG/Baikor_R/actions/workflows/release.yml).
-The pinned **0.4.1** packages can be downloaded without a registry login.
-Verify their availability before deployment. Image and chart versions 1.7.6
+Verify the pinned **0.4.2** packages can be downloaded without a registry login
+before deployment. Image and chart versions 1.7.6
 through 1.7.9 were retired from GHCR.
 The workflow verifies downloads without registry credentials before creating
 the release. Permit GHCR downloads from your platform or mirror the artifacts.
@@ -383,29 +383,99 @@ with a completion time and success or failure. The settings and history are
 visible only to these administrators. Baikor's built-in worker processes new ZIP
 attachments without a Node-RED flow or a special Keycloak import user.
 
-The addon creates `baikor-r-mail-encryption` in the application namespace only
-when missing and preserves its random 32-byte encryption key on upgrades. Back
-up this Secret with the application database. All app instances sharing that
-database need the same Secret value. Existing invalid keys are rejected instead
-of overwritten. The mailbox password is entered in Baikor and encrypted in the
-private application database; it is not stored in inventory or Helm values.
+### Application encryption
 
-Optional inventory overrides:
+The addon provisions a persistent 32-byte application encryption key automatically.
+A new installation uses the Kubernetes Secret `baikor-r-encryption` in the
+application namespace. Baikor protects the mailbox password and future stored
+credentials for their respective purposes with this root key. Back up the Secret
+with the database. All app deployments that read or write encrypted data in
+that database must use the same key.
+
+Upgrading from 0.4.0 or 0.4.1 preserves the exact bytes of the existing key.
+The addon copies the default `baikor-r-mail-encryption` key to the new Secret
+and retains the legacy Secret. A custom Secret reference inherited from the
+existing Deployment or inventory stays in use when it contains a valid key.
+If the previous release referenced a missing Secret, the addon verifies the new
+application against the database before restoring that legacy reference with
+the same bytes. For an operator-managed Secret,
+specify its name under `encryption.secret`. The `key` field's string value is
+the base64 encoding of 32 cryptographically random bytes.
 
 ```yaml
 inv_addons:
     baikor_r:
+        encryption:
+            secret: my-existing-baikor-key
         mail_imports:
             worker_enabled: true
-            encryption_secret: baikor-r-mail-encryption
 ```
 
-An operator-provided Secret of that name must contain `key`, whose string value
-is base64 encoding of 32 cryptographically random bytes. Keep the name stable.
-The application remains usable if the key is unavailable; mail processing reports
-the error. Restore the original key if it is lost. Rotating the key requires
-pausing processing, backing up the old key/database, updating every instance and
-re-entering the mailbox password. A fresh installation starts with mail disabled.
+The playbook verifies the rolled-out Deployment and its ready pods. Each
+application process checks the actual key against the provisioned fingerprint
+and decrypts any previously saved mailbox password before becoming ready.
+A missing reference, stale release, invalid key or conflicting keys fails the
+deployment. A fresh installation starts with mail disabled.
+
+#### Platform-managed encryption Secret
+
+If cluster policy prevents the addon from creating Secrets, a platform
+administrator can provision the reference printed by Ansible and rerun the
+usual addon setup. The default name is `baikor-r-encryption` and the field is
+`key`. With a custom inventory or Helm reference, use that exact name and
+field. The addon still needs permission to read the Secret and verify the
+rollout.
+
+On a first installation with no existing key, saved credential or previous key
+fingerprint, set the values below to your Core Kubernetes context and
+`inv_addons.baikor_r.ns_name`. Run this from a Bash shell with a kubeconfig
+that can create Secrets in that namespace. The command creates a Secret once
+and leaves an existing Secret intact.
+
+```bash
+(
+  set -eu
+  context='YOUR-CORE-CONTEXT'
+  namespace='YOUR-BAIKOR-NAMESPACE'
+  name='baikor-r-encryption'
+  field='key'
+  umask 077
+  key_file=$(mktemp)
+  trap 'rm -f -- "$key_file"' EXIT
+  python3 -c 'import secrets, base64, sys; sys.stdout.buffer.write(base64.b64encode(secrets.token_bytes(32)))' > "$key_file"
+  kubectl --context "$context" --namespace "$namespace" create secret generic "$name" --from-file="$field=$key_file"
+)
+```
+
+The file contains the base64 encoding of 32 random bytes without a trailing
+newline. Kubernetes applies its own storage encoding. When an earlier Secret,
+credential or fingerprint exists, supply the **original** bytes from that
+Secret or its backup in this same format. If the requested reference is a
+legacy alias, copy the already verified application key. Back up the Secret
+with the database.
+
+On 0.4.0 and 0.4.1, a Helm override could select a different name or field
+from the one the addon provisioned. On 0.4.1, a pod that started before its
+optional Secret existed kept running without the key, and a later Helm run
+with the same pod template could leave that pod in place.
+If a referenced Secret already exists but its selected field is missing or
+invalid, the upgrade stops. Have the Secret's
+owner restore the original key into the field named in the error, preserving
+the other fields. Check both the previous Deployment's `MailImports__EncryptionKey`
+reference and the inventory's `mailImports.encryption.existingSecret` override,
+then run the addon again.
+
+#### Failed-upgrade recovery
+
+If the first upgrade fails because a saved credential cannot be decrypted,
+locate the original encryption Secret in the cluster or its backup. Use
+`helm history` to identify the last working release. If Helm installed the
+failed revision, roll back to that working revision before restoring any
+Secret bytes. This removes the failed candidate's expected fingerprint.
+Restore the original bytes in both the previous release's Secret and the
+application Secret named by the addon, then rerun the playbook. If a key goes
+missing after a successful upgrade, restore the backed-up key to the configured
+Secret and rerun the playbook. The database alone cannot recover a lost key.
 
 TLS verification is mandatory. Optional NetworkPolicy installations must explicitly
 allow their IMAP destination and DNS. On first activation or when switching to
@@ -413,7 +483,7 @@ a different mailbox, Baikor starts with new mail. Turning import off and back
 on for the same mailbox preserves its position.
 
 For an existing mail workflow, follow the application's [mail setup and cutover
-guide](https://github.com/Synnotech-AG/Baikor_R/blob/0.4.1/docs/MAIL_IMPORTS.md).
+guide](https://github.com/Synnotech-AG/Baikor_R/blob/0.4.2/docs/MAIL_IMPORTS.md).
 Quiesce the dedicated workflow, preserve all completed ledger hashes with the
 provided migration tool, securely transfer settings, then enable native imports
 and verify a new message. Retain the old ledger/PVC for rollback and preserve
@@ -467,13 +537,13 @@ Back up the database and check for local image and chart overrides before
 pinning the new addon commit or release and running the same Ansible deployment.
 
 ```shell
-git -C core_platform/addons/baikor_r_addon fetch origin tag 0.4.1
-git -C core_platform/addons/baikor_r_addon checkout --detach 0.4.1
+git -C core_platform/addons/baikor_r_addon fetch origin tag 0.4.2
+git -C core_platform/addons/baikor_r_addon checkout --detach 0.4.2
 ansible-playbook -i inventory.yml core_platform/playbook.yml --tags addons
 ```
 
 Record the updated submodule pointer in your Core repository. The default
-addon pins select application image and Helm chart 0.4.1. An existing native
+addon pins select application image and Helm chart 0.4.2. An existing native
 mail setup reuses its encryption Secret and saved mailbox settings.
 
 Changes awaiting publication are recorded in [CHANGELOG.md](CHANGELOG.md).

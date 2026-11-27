@@ -37,8 +37,8 @@
 - name: "Baikor_R: Configure Keycloak client and roles"
   ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/keycloak.yml"
 
-- name: "Baikor_R: Preserve the native mail credential encryption key"
-  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/mail_imports.yml"
+- name: "Baikor_R: Configure application encryption"
+  ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/encryption.yml"
 
 - name: "Baikor_R: Create ingress certificate"
   ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/ingress.yml"
@@ -57,12 +57,14 @@
     helm_values_file: "{{ addon_dir | default('') + 'templates/baikor_r_values.yml' }}"
     helm_values_rcombine: >-
       {{ inv_addons.baikor_r.helm_values | default({})
+         | combine(baikor_encryption_helm_values, recursive=True)
          | combine({'podAnnotations': {
              'baikor-r.civitasconnect.digital/database-revision': baikor_database_connection_revision
            }}, recursive=True) }}
     helm_create_namespace: false
   when:
     - inv_addons.baikor_r.enable | bool
+    - not ansible_check_mode
     - inv_addons.baikor_r.helm.local_chart_path | default('') | length == 0
 
 - name: "[Helm] Install Baikor_R from a local development chart"
@@ -73,12 +75,39 @@
     helm_values_file: "{{ addon_dir | default('') + 'templates/baikor_r_values.yml' }}"
     helm_values_rcombine: >-
       {{ inv_addons.baikor_r.helm_values | default({})
+         | combine(baikor_encryption_helm_values, recursive=True)
          | combine({'podAnnotations': {'baikor-r.civitasconnect.digital/local-rollout': now(utc=true, fmt='%Y%m%d%H%M%S')}}, recursive=True) }}
     helm_create_namespace: false
     helm_timeout: 10m
   when:
     - inv_addons.baikor_r.enable | bool
+    - not ansible_check_mode
     - inv_addons.baikor_r.helm.local_chart_path | default('') | length > 0
+
+- name: "Baikor_R: Verify application encryption on the running release"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ playbook_dir }}/{{ addon_dir }}scripts/deployment/application_key.py"
+      - --kubeconfig
+      - "{{ k8s_config }}"
+      - --context
+      - "{{ k8s_context }}"
+      - --namespace
+      - "{{ k8s_namespace }}"
+      - --release
+      - "{{ software.addon_baikor_r.baikor_r.helm_release_name }}"
+      - --mode
+      - verify
+    stdin: >-
+      {{ (baikor_encryption_result.stdout | from_json)
+         | combine({'image':
+           (inv_addons.baikor_r.helm_values.image.repository | default(baikor_registry_plan.application.image)) ~ ':' ~
+           (inv_addons.baikor_r.helm_values.image.tag | default(software.addon_baikor_r.baikor_r.tag, true))})
+         | to_json }}
+  register: baikor_encryption_verified
+  changed_when: "'Restored missing legacy encryption Secret.' in baikor_encryption_verified.stdout"
+  when: not ansible_check_mode
 
 - name: "Baikor_R: Reconcile publication grants after migrations"
   ansible.builtin.include_tasks: "{{ addon_dir }}tasks/baikor_r/database_bootstrap.yml"

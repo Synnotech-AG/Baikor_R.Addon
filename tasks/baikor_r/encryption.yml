@@ -1,0 +1,42 @@
+---
+- name: "Baikor_R: Preserve or provision the application encryption key"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ playbook_dir }}/{{ addon_dir }}scripts/deployment/application_key.py"
+      - --kubeconfig
+      - "{{ k8s_config }}"
+      - --context
+      - "{{ k8s_context }}"
+      - --namespace
+      - "{{ k8s_namespace }}"
+      - --release
+      - "{{ software.addon_baikor_r.baikor_r.helm_release_name }}"
+      - --mode
+      - "{{ 'check' if ansible_check_mode else 'apply' }}"
+    stdin: >-
+      {{ {
+        'inventory': inv_addons.baikor_r.encryption.secret | default(''),
+        'helm': inv_addons.baikor_r.helm_values.encryption.existingSecret | default({}),
+        'oldInventory': inv_addons.baikor_r.mail_imports.encryption_secret | default(''),
+        'oldHelm': inv_addons.baikor_r.helm_values.mailImports.encryption.existingSecret | default({})
+      } | to_json }}
+  register: baikor_encryption_result
+  changed_when: baikor_encryption_result.rc == 0 and (baikor_encryption_result.stdout | from_json).changed
+  check_mode: false
+
+- name: "Baikor_R: Require the provisioned key and its readiness check in the Helm deployment"
+  ansible.builtin.set_fact:
+    baikor_encryption_helm_values:
+      podAnnotations:
+        baikor-r.civitasconnect.digital/legacy-encryption-secret: "{{ (baikor_encryption_result.stdout | from_json).legacyAlias }}"
+      encryption:
+        existingSecret:
+          name: "{{ (baikor_encryption_result.stdout | from_json).name }}"
+          key: "{{ (baikor_encryption_result.stdout | from_json).key }}"
+        required: true
+        expectedKeySha256: "{{ (baikor_encryption_result.stdout | from_json).digest }}"
+      mailImports:
+        encryption:
+          existingSecret:
+            name: ""
